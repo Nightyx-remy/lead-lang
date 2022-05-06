@@ -20,7 +20,7 @@ mod generator;
 
 fn main() {
     // File
-    let mut str = "true ^^ true;".to_string();
+    let mut str = "5 + 2 <= 2 + 4;3 & 1;".to_string();
 
     // Lexer
     let mut lexer = Lexer::new(str);

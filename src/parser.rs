@@ -106,6 +106,12 @@ impl Parser {
                         _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Value".to_string())])))
                     }
                 }
+                Token::LeftParenthesis => {
+                    self.advance();
+                    let expr = self.parse_expr()?;
+                    self.expect_token(Token::RightParenthesis)?;
+                    return Ok(expr);
+                }
                 _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Value".to_string())])))
             }
         } else {
@@ -175,9 +181,11 @@ impl Parser {
 
         while let Some(current) = self.current() {
             let operator = match current.data {
-                Token::DoubleAnd | Token::Keyword(Keyword::And) => current.convert(Operator::And),
-                Token::DoublePipe | Token::Keyword(Keyword::Or) => current.convert(Operator::Or),
-                Token::DoubleHat  | Token::Keyword(Keyword::Xor) => current.convert(Operator::Xor),
+                Token::DoubleLeftAngle => current.convert(Operator::LeftShift),
+                Token::DoubleRightAngle => current.convert(Operator::RightShift),
+                Token::And => current.convert(Operator::BitAnd),
+                Token::Pipe => current.convert(Operator::BitOr),
+                Token::Hat => current.convert(Operator::BitXor),
                 _ => break
             };
             self.advance();
@@ -198,8 +206,67 @@ impl Parser {
         return Ok(left);
     }
 
+    fn parse_bin_op4(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        let mut left = self.parse_bin_op3()?;
+
+        while let Some(current) = self.current() {
+            let operator = match current.data {
+                Token::LeftAngle => current.convert(Operator::Less),
+                Token::RightAngle => current.convert(Operator::Greater),
+                Token::LeftAngleEqual => current.convert(Operator::LessOrEqual),
+                Token::RightAngleEqual => current.convert(Operator::GreaterOrEqual),
+                Token::ExclamationMarkEqual => current.convert(Operator::NotEqual),
+                Token::DoubleEqual => current.convert(Operator::Equal),
+                _ => break
+            };
+            self.advance();
+            let right = self.parse_bin_op3()?;
+            let start = left.start.clone();
+            let end = right.end.clone();
+            left = Positioned::new(
+                Node::BinaryOperation(
+                    Box::new(left),
+                    operator,
+                    Box::new(right)
+                ),
+                start,
+                end
+            );
+        }
+
+        return Ok(left);
+    }
+
+    fn parse_bin_op5(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        let mut left = self.parse_bin_op4()?;
+
+        while let Some(current) = self.current() {
+            let operator = match current.data {
+                Token::DoubleAnd | Token::Keyword(Keyword::And) => current.convert(Operator::And),
+                Token::DoublePipe | Token::Keyword(Keyword::Or) => current.convert(Operator::Or),
+                Token::DoubleHat  | Token::Keyword(Keyword::Xor) => current.convert(Operator::Xor),
+                _ => break
+            };
+            self.advance();
+            let right = self.parse_bin_op4()?;
+            let start = left.start.clone();
+            let end = right.end.clone();
+            left = Positioned::new(
+                Node::BinaryOperation(
+                    Box::new(left),
+                    operator,
+                    Box::new(right)
+                ),
+                start,
+                end
+            );
+        }
+
+        return Ok(left);
+    }
+
     fn parse_expr(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
-        return self.parse_bin_op3();
+        return self.parse_bin_op5();
     }
 
     fn parse_keyword(&mut self, keyword: Positioned<Keyword>) -> Result<Positioned<Node>, Positioned<ParserError>> {
@@ -223,7 +290,7 @@ impl Parser {
                     self.advance();
                     return self.parse_current();
                 }
-                Token::Number(_) | Token::Char(_) | Token::String(_) => {
+                Token::LeftParenthesis | Token::Number(_) | Token::Char(_) | Token::String(_) => {
                     let expr = self.parse_expr()?;
                     self.expect_token(Token::Semicolon)?;
                     self.advance();

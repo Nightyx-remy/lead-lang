@@ -142,6 +142,173 @@ impl Optimizer {
                     _ => {}
                 }
             }
+            Operator::LeftShift => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value << right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Number(value.to_string())), start, end));
+                            }
+                        }
+                    }
+                    _=> {}
+                }
+            }
+            Operator::RightShift => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value >> right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Number(value.to_string())), start, end));
+                            }
+                        }
+                    }
+                    _=> {}
+                }
+            }
+            Operator::BitAnd => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value & right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Number(value.to_string())), start, end));
+                            }
+                        }
+                    }
+                    _=> {}
+                }
+            }
+            Operator::BitOr => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value | right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Number(value.to_string())), start, end));
+                            }
+                        }
+                    }
+                    _=> {}
+                }
+            }
+            Operator::BitXor => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value ^ right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Number(value.to_string())), start, end));
+                            }
+                        }
+                    }
+                    _=> {}
+                }
+            }
+            Operator::Greater => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value > right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                            }
+                        }
+                    },
+                    _=> {}
+                }
+            }
+            Operator::GreaterOrEqual => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value >= right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                            }
+                        }
+                    },
+                    _=> {}
+                }
+            }
+            Operator::Less => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value < right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                            }
+                        }
+                    },
+                    _=> {}
+                }
+            }
+            Operator::LessOrEqual => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value <= right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                            }
+                        }
+                    },
+                    _=> {}
+                }
+            }
+            Operator::Equal => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value == right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                            }
+                        }
+                    },
+                    (Node::Value(ValueNode::Char(left_value)), Node::Value(ValueNode::Char(right_value))) => {
+                        let value = left_value == right_value;
+                        return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                    },
+                    (Node::Value(ValueNode::String(left_value)), Node::Value(ValueNode::String(right_value))) => {
+                        let value = left_value == right_value;
+                        return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                    },
+                    (Node::Value(ValueNode::Boolean(left_value)), Node::Value(ValueNode::Boolean(right_value))) => {
+                        let value = left_value == right_value;
+                        return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                    },
+                    _ => {}
+                }
+            }
+            Operator::NotEqual => {
+                match (left.1.data.clone(), right.1.data.clone()) {
+                    (Node::Value(ValueNode::Number(left_value_str)), Node::Value(ValueNode::Number(right_value_str))) => {
+                        if let Ok(left_value) = u128::from_str_radix(left_value_str.as_str(), 10) {
+                            if let Ok(right_value) = u128::from_str_radix(right_value_str.as_str(), 10) {
+                                let value = left_value != right_value;
+                                return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                            }
+                        }
+                    },
+                    (Node::Value(ValueNode::Char(left_value)), Node::Value(ValueNode::Char(right_value))) => {
+                        let value = left_value != right_value;
+                        return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                    },
+                    (Node::Value(ValueNode::String(left_value)), Node::Value(ValueNode::String(right_value))) => {
+                        let value = left_value != right_value;
+                        return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                    },
+                    (Node::Value(ValueNode::Boolean(left_value)), Node::Value(ValueNode::Boolean(right_value))) => {
+                        let value = left_value != right_value;
+                        return Ok(Positioned::new(Node::Value(ValueNode::Boolean(value)), start, end));
+                    },
+                    _ => {}
+                }
+            }
         }
         return Ok(Positioned::new(Node::BinaryOperation(Box::new(left.1.clone()), operator, Box::new(right.1.clone())), start, end));
     }
@@ -153,8 +320,8 @@ impl Optimizer {
         let left_result = self.optimize_node(left)?;
         let right_result = self.optimize_node(right)?;
 
-        if let Some(output_type) = operator.data.check_compatibility(left_result.0.clone(), right_result.0.clone()) {
-            return if left_result.0.is_comptime() && right_result.0.is_comptime() {
+        return if let Some(output_type) = operator.data.check_compatibility(left_result.0.clone(), right_result.0.clone()) {
+            if left_result.0.is_comptime() && right_result.0.is_comptime() {
                 Ok((output_type, self.optimize_comptime_op(left_result, operator, right_result)?))
             } else {
                 Ok((
@@ -163,7 +330,7 @@ impl Optimizer {
                 ))
             }
         } else {
-            return Err(Positioned::new(OptimizerError::IncompatibleBinOperator(left_result.0, operator.data, right_result.0), start, end));
+            Err(Positioned::new(OptimizerError::IncompatibleBinOperator(left_result.0, operator.data, right_result.0), start, end))
         }
     }
 

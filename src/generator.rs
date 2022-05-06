@@ -32,6 +32,17 @@ impl Generator {
             COperator::Remainder => '%'.to_string(),
             COperator::And => "&&".to_string(),
             COperator::Or => "||".to_string(),
+            COperator::LeftShift => "<<".to_string(),
+            COperator::RightShift => ">>".to_string(),
+            COperator::BitAnd => '&'.to_string(),
+            COperator::BitOr => '|'.to_string(),
+            COperator::BitXor => '^'.to_string(),
+            COperator::Greater => '>'.to_string(),
+            COperator::GreaterOrEqual => ">=".to_string(),
+            COperator::Less => '<'.to_string(),
+            COperator::LessOrEqual => "<=".to_string(),
+            COperator::Equal => "==".to_string(),
+            COperator::NotEqual => "!=".to_string(),
         }
     }
 
@@ -68,9 +79,9 @@ impl Generator {
     }
 
     fn generate_node(&mut self, node: Positioned<CNode>) -> String {
-        match node.data {
-            CNode::BinaryOperation(left, op, right) => return self.generate_bin_op(*left, op, *right),
-            CNode::Value(value) => return self.generate_value(value),
+        return match node.data {
+            CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
+            CNode::Value(value) => self.generate_value(value),
         }
     }
 
@@ -79,6 +90,7 @@ impl Generator {
 
         while let Some(current) = self.current() {
             str.push_str(self.generate_node(current).as_str());
+            str.push_str(";\n");
             self.advance();
         }
 

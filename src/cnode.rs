@@ -15,6 +15,17 @@ pub enum COperator {
     Remainder,
     And,
     Or,
+    LeftShift,
+    RightShift,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Greater,
+    GreaterOrEqual,
+    Less,
+    LessOrEqual,
+    Equal,
+    NotEqual
 }
 
 #[derive(Clone, Debug)]

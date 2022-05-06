@@ -138,12 +138,12 @@ impl Lexer {
             },
         }
 
-        if self.current == '\'' {
+        return if self.current == '\'' {
             self.advance();
             let end = self.pos.clone();
-            return Ok(Positioned::new(Token::Char(str), start, end));
+            Ok(Positioned::new(Token::Char(str), start, end))
         } else {
-            return Err(self.make_single(LexerError::MissingChar('\'')));
+            Err(self.make_single(LexerError::MissingChar('\'')))
         }
     }
 
@@ -202,6 +202,74 @@ impl Lexer {
                     '*' => tokens.push(self.make_single(Token::Star)),
                     '%' => tokens.push(self.make_single(Token::Percent)),
                     ';' => tokens.push(self.make_single(Token::Semicolon)),
+                    '(' => tokens.push(self.make_single(Token::LeftParenthesis)),
+                    ')' => tokens.push(self.make_single(Token::RightParenthesis)),
+                    '<' => {
+                        let next = self.peek(1);
+                        match next {
+                            '<' => {
+                                let start = self.pos.clone();
+                                self.advance();
+                                let mut end = self.pos.clone();
+                                end.advance(next);
+                                tokens.push(Positioned::new(Token::DoubleLeftAngle, start, end));
+                            }
+                            '=' => {
+                                let start = self.pos.clone();
+                                self.advance();
+                                let mut end = self.pos.clone();
+                                end.advance(next);
+                                tokens.push(Positioned::new(Token::LeftAngleEqual, start, end));
+                            }
+                            _ => tokens.push(self.make_single(Token::LeftAngle)),
+                        }
+                    }
+                    '>' => {
+                        let next = self.peek(1);
+                        match next {
+                            '>' => {
+                                let start = self.pos.clone();
+                                self.advance();
+                                let mut end = self.pos.clone();
+                                end.advance(next);
+                                tokens.push(Positioned::new(Token::DoubleRightAngle, start, end));
+                            }
+                            '=' => {
+                                let start = self.pos.clone();
+                                self.advance();
+                                let mut end = self.pos.clone();
+                                end.advance(next);
+                                tokens.push(Positioned::new(Token::RightAngleEqual, start, end));
+                            }
+                            _ => tokens.push(self.make_single(Token::RightAngle)),
+                        }
+                    }
+                    '!' => {
+                        let next = self.peek(1);
+                        match next {
+                            '=' => {
+                                let start = self.pos.clone();
+                                self.advance();
+                                let mut end = self.pos.clone();
+                                end.advance(next);
+                                tokens.push(Positioned::new(Token::ExclamationMarkEqual, start, end));
+                            }
+                            _ => todo!("exclamation mark (unary operator)"),
+                        }
+                    }
+                    '=' => {
+                        let next = self.peek(1);
+                        match next {
+                            '=' => {
+                                let start = self.pos.clone();
+                                self.advance();
+                                let mut end = self.pos.clone();
+                                end.advance(next);
+                                tokens.push(Positioned::new(Token::DoubleEqual, start, end));
+                            }
+                            _ => todo!("equal (variable)"),
+                        }
+                    }
                     '&' => {
                         let next = self.peek(1);
                         match next {
@@ -212,7 +280,7 @@ impl Lexer {
                                 end.advance(next);
                                 tokens.push(Positioned::new(Token::DoubleAnd, start, end));
                             }
-                            _ => return Err(self.make_single(LexerError::UnexpectedChar(self.current))),
+                            _ => tokens.push(self.make_single(Token::And)),
                         }
                     }
                     '|' => {
@@ -225,7 +293,7 @@ impl Lexer {
                                 end.advance(next);
                                 tokens.push(Positioned::new(Token::DoublePipe, start, end));
                             }
-                            _ => return Err(self.make_single(LexerError::UnexpectedChar(self.current))),
+                            _ => tokens.push(self.make_single(Token::Pipe)),
                         }
                     }
                     '^' => {
@@ -238,7 +306,7 @@ impl Lexer {
                                 end.advance(next);
                                 tokens.push(Positioned::new(Token::DoubleHat, start, end));
                             }
-                            _ => return Err(self.make_single(LexerError::UnexpectedChar(self.current))),
+                            _ => tokens.push(self.make_single(Token::Hat)),
                         }
                     }
                     ' ' | '\n' | '\t' => {},

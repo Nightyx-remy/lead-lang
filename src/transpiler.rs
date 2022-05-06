@@ -53,6 +53,17 @@ impl Transpiler {
             Operator::And => Ok(operator.convert(COperator::And)),
             Operator::Or => Ok(operator.convert(COperator::Or)),
             Operator::Xor => todo!("Xor operating (need the not operator)"),
+            Operator::LeftShift => Ok(operator.convert(COperator::LeftShift)),
+            Operator::RightShift => Ok(operator.convert(COperator::RightShift)),
+            Operator::BitAnd => Ok(operator.convert(COperator::BitAnd)),
+            Operator::BitOr => Ok(operator.convert(COperator::BitOr)),
+            Operator::BitXor => Ok(operator.convert(COperator::BitXor)),
+            Operator::Greater => Ok(operator.convert(COperator::Greater)),
+            Operator::GreaterOrEqual => Ok(operator.convert(COperator::GreaterOrEqual)),
+            Operator::Less => Ok(operator.convert(COperator::Less)),
+            Operator::LessOrEqual => Ok(operator.convert(COperator::LessOrEqual)),
+            Operator::Equal => Ok(operator.convert(COperator::Equal)),
+            Operator::NotEqual => Ok(operator.convert(COperator::NotEqual)),
         }
     }
 
