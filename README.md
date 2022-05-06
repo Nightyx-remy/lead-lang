@@ -4,7 +4,14 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.1] (Current)
+### Version [0.1.1] (current)
+- Boolean binary operation
+  - and
+  - or
+  - xor (only supported with comptime values)
+- Optimization of comptime boolean operation
+
+### Version [0.1] 
 - Basic comptime values
   - Number
   - String
