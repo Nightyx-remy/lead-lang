@@ -20,7 +20,7 @@ mod generator;
 
 fn main() {
     // File
-    let mut str = "5 + 6 - \'a\';".to_string();
+    let mut str = "true ^^ true;".to_string();
 
     // Lexer
     let mut lexer = Lexer::new(str);
