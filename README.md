@@ -9,6 +9,7 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
   - and
   - or
   - xor (only supported with comptime values)
+- Optimization of comptime boolean operation
 
 ### Version [0.1] 
 - Basic comptime values
