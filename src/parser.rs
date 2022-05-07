@@ -126,6 +126,31 @@ impl Parser {
         }
     }
 
+    fn parse_cast(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        let mut left = self.parse_value()?;
+        self.advance();
+
+        while let Some(current) = self.current() {
+            match current.data {
+                Token::Keyword(Keyword::To) => {
+                    self.advance();
+                    let right = self.parse_type()?;
+                    self.advance();
+                    let start = left.start.clone();
+                    let end = right.end.clone();
+                    left = Positioned::new(
+                        Node::Casting(Box::new(left), right),
+                        start,
+                        end
+                    );
+                },
+                _ => break
+            };
+        }
+
+        return Ok(left);
+    }
+
     fn parse_unary(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
         return if let Some(current) = self.current() {
             let start = current.start.clone();
@@ -133,11 +158,11 @@ impl Parser {
                 Token::Plus => current.convert(Operator::Plus),
                 Token::Minus => current.convert(Operator::Minus),
                 Token::ExclamationMark | Token::Keyword(Keyword::Not) => current.convert(Operator::Not),
-                _ => return self.parse_value(),
+                _ => return self.parse_cast(),
             };
             self.advance();
 
-            let value = self.parse_value()?;
+            let value = self.parse_cast()?;
             let end = value.end.clone();
             Ok(Positioned::new(Node::UnaryOperation(operator, Box::new(value)), start, end))
         } else {
@@ -147,7 +172,6 @@ impl Parser {
 
     fn parse_bin_op1(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
         let mut left = self.parse_unary()?;
-        self.advance();
 
         while let Some(current) = self.current() {
             let operator = match current.data {
@@ -158,7 +182,6 @@ impl Parser {
             };
             self.advance();
             let right = self.parse_unary()?;
-            self.advance();
             let start = left.start.clone();
             let end = right.end.clone();
             left = Positioned::new(

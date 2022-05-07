@@ -6,6 +6,7 @@ pub enum Node {
     UnaryOperation(Positioned<Operator>, Box<Positioned<Node>>),
     Value(ValueNode),
     VariableDefinition(Positioned<VarType>, Positioned<String>, Option<Positioned<DataType>>, Option<Box<Positioned<Node>>>),
+    Casting(Box<Positioned<Node>>, Positioned<DataType>),
 }
 
 #[derive(Clone, Debug)]
@@ -261,7 +262,31 @@ impl DataType {
             (DataType::ComptimeNumber, DataType::I8) |
             (DataType::ComptimeNumber, DataType::I16) |
             (DataType::ComptimeNumber, DataType::I32) |
-            (DataType::ComptimeNumber, DataType::I64) => true,
+            (DataType::ComptimeNumber, DataType::I64) |
+            (DataType::ComptimeNumber, DataType::ComptimeChar) |
+            (DataType::ComptimeNumber, DataType::Char) => true,
+            (DataType::ComptimeString, DataType::String) => true,
+            (DataType::ComptimeBool, DataType::Bool) => true,
+            (DataType::ComptimeChar, DataType::Char) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_castable(&self, other: DataType) -> bool {
+        if *self == other {
+            return true;
+        }
+        match (self, other) {
+            (DataType::ComptimeNumber, DataType::U8) |
+            (DataType::ComptimeNumber, DataType::U16) |
+            (DataType::ComptimeNumber, DataType::U32) |
+            (DataType::ComptimeNumber, DataType::U64) |
+            (DataType::ComptimeNumber, DataType::I8) |
+            (DataType::ComptimeNumber, DataType::I16) |
+            (DataType::ComptimeNumber, DataType::I32) |
+            (DataType::ComptimeNumber, DataType::I64) |
+            (DataType::ComptimeNumber, DataType::ComptimeChar) |
+            (DataType::ComptimeNumber, DataType::Char) => true,
             (DataType::ComptimeString, DataType::String) => true,
             (DataType::ComptimeBool, DataType::Bool) => true,
             (DataType::ComptimeChar, DataType::Char) => true,

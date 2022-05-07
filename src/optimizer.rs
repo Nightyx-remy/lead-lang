@@ -164,12 +164,23 @@ impl Optimizer {
         }
     }
 
+    fn optimize_casting(&mut self, left: Positioned<Node>, right: Positioned<DataType>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
+        let left_result = self.optimize_node(left.clone())?;
+
+        return if left_result.0.clone().unwrap().is_castable(right.data.clone()) {
+            Ok((Some(right.data.clone()), Positioned::new(Node::Casting(Box::new(left_result.1.clone()), right.clone()), left.start.clone(), right.end.clone())))
+        } else {
+            Err(Positioned::new(OptimizerError::IncompatibleTypes(left_result.0.clone().unwrap(), right.data.clone()), left.start.clone(), right.end.clone()))
+        }
+    }
+
     fn optimize_node(&mut self, node: Positioned<Node>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.check_bin_op(*left, operator, *right),
             Node::UnaryOperation(operator, value) => self.check_unary_op(operator, *value),
             Node::Value(value) => Ok((Some(DataType::from(value)), node.clone())),
             Node::VariableDefinition(var_type, name, data_type, value) => self.check_variable_definition(var_type, name, data_type, value),
+            Node::Casting(left, right) => self.optimize_casting(*left, right),
         }
     }
 

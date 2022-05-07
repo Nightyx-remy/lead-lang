@@ -157,12 +157,20 @@ impl Transpiler {
         return Ok(Positioned::new(CNode::VariableDef(c_type, is_const, name.clone(), c_value), start, end));
     }
 
+    fn translate_casting(&mut self, left: Positioned<Node>, right: Positioned<DataType>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let c_left = self.transpile_node(left.clone())?;
+        let c_right = self.transpile_type(right.clone())?;
+
+        return Ok(Positioned::new(CNode::Casting(Box::new(c_left), c_right), left.start, right.end));
+    }
+
     fn transpile_node(&mut self, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.transpile_bin_op(*left, operator, *right),
             Node::UnaryOperation(operator, value) => self.transpile_unary_op(operator, *value),
             Node::Value(value) => self.transpile_value(node.convert(value)),
             Node::VariableDefinition(var_type, name, data_type, value) => self.transpile_variable_def(var_type, name, data_type, value),
+            Node::Casting(left, right) => self.translate_casting(*left, right),
         }
     }
 

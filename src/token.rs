@@ -55,6 +55,7 @@ pub enum Keyword {
     Bool,
     Str,
     Char,
+    To
 }
 
 impl Keyword {
@@ -84,6 +85,7 @@ impl Keyword {
             "bool" => Some(Keyword::Bool),
             "str" => Some(Keyword::Str),
             "char" => Some(Keyword::Char),
+            "to" => Some(Keyword::To),
             _ => None
         }
     }

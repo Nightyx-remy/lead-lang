@@ -119,12 +119,22 @@ impl Generator {
         return str;
     }
 
+    fn generate_cast(&mut self, left: Positioned<CNode>, right: Positioned<CType>) -> String {
+        let mut str = String::new();
+        str.push('(');
+        str.push_str(self.generate_type(right).as_str());
+        str.push_str(") ");
+        str.push_str(self.generate_node(left).as_str());
+        return str;
+    }
+
     fn generate_node(&mut self, node: Positioned<CNode>) -> String {
         return match node.data {
             CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
             CNode::UnaryOperation(operator, value) => self.generate_unary_op(operator, *value),
             CNode::Value(value) => self.generate_value(value),
             CNode::VariableDef(data_type, is_const, name, value) => self.generate_variable_def(data_type, is_const, name, value),
+            CNode::Casting(left, right) => self.generate_cast(*left, right),
         }
     }
 

@@ -5,7 +5,8 @@ pub enum CNode {
     BinaryOperation(Box<Positioned<CNode>>, Positioned<COperator>, Box<Positioned<CNode>>),
     UnaryOperation(Positioned<COperator>, Box<Positioned<CNode>>),
     Value(CValueNode),
-    VariableDef(Positioned<CType>, bool, Positioned<String>, Option<Box<Positioned<CNode>>>)
+    VariableDef(Positioned<CType>, bool, Positioned<String>, Option<Box<Positioned<CNode>>>),
+    Casting(Box<Positioned<CNode>>, Positioned<CType>)
 }
 
 #[derive(Clone, Debug)]
