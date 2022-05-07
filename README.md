@@ -4,7 +4,10 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.2.0] (current)
+### Version [0.2.1] (current)
+- Casting
+
+### Version [0.2.0]
 - Variable Definition
   - Var
   - Let
