@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::os::linux::raw::stat;
 use crate::{Node, Positioned};
 use crate::cnode::{CNode, COperator, CValueNode};
 use crate::node::{Operator, ValueNode};
@@ -73,8 +74,31 @@ impl Transpiler {
         let end = right.end.clone();
         let c_left = self.transpile_node(left)?;
         let c_right = self.transpile_node(right)?;
-        let c_op = self.transpile_operator(operator)?;
-        return Ok(Positioned::new(CNode::BinaryOperation(Box::new(c_left), c_op, Box::new(c_right)), start, end));
+        return match operator.data {
+            Operator::Xor => {
+                // a ^^ b => (a || b) && !(a && b)
+                Ok(Positioned::new(CNode::BinaryOperation(
+                    Box::new(Positioned::new(CNode::BinaryOperation(
+                        Box::new(c_left.clone()),
+                        Positioned::new(COperator::Or, start.clone(), end.clone()),
+                        Box::new(c_right.clone())
+                    ), start.clone(), end.clone())),
+                    Positioned::new(COperator::And, start.clone(), end.clone()),
+                    Box::new(Positioned::new(CNode::UnaryOperation(
+                        Positioned::new(COperator::Not, start.clone(), end.clone()),
+                        Box::new(Positioned::new(CNode::BinaryOperation(
+                            Box::new(c_left.clone()),
+                            Positioned::new(COperator::And, start.clone(), end.clone()),
+                            Box::new(c_right.clone())
+                        ), start.clone(), end.clone()))
+                    ), start.clone(), end.clone()))
+                ), start.clone(), end.clone()))
+            }
+            _ => {
+                let c_op = self.transpile_operator(operator)?;
+                Ok(Positioned::new(CNode::BinaryOperation(Box::new(c_left), c_op, Box::new(c_right)), start, end))
+            }
+        }
     }
 
     fn transpile_value(&mut self, value: Positioned<ValueNode>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
