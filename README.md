@@ -4,7 +4,15 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.1.2] (current)
+### Version [0.1.3] (current)
+- Unary operation
+  - Minus
+  - Plus
+  - Not
+- Support of xor operation
+- Removal of comptime binary optimization 
+
+### Version [0.1.2] 
 - More binary operation + comptime optimization
   - bit and               
   - bit or                
