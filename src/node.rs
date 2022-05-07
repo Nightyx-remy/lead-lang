@@ -3,6 +3,7 @@ use crate::Positioned;
 #[derive(Clone, Debug)]
 pub enum Node {
     BinaryOperation(Box<Positioned<Node>>, Positioned<Operator>, Box<Positioned<Node>>),
+    UnaryOperation(Positioned<Operator>, Box<Positioned<Node>>),
     Value(ValueNode)
 }
 
@@ -15,12 +16,12 @@ pub enum ValueNode {
 }
 
 #[derive(Clone, Debug)]
-pub enum Operator {     // Precedence
+pub enum Operator {     // Precedence   Unary-Precedence
     Multiply,           // 1
     Divide,             // 1
     Remainder,          // 1
-    Plus,               // 2
-    Minus,              // 2
+    Plus,               // 2            1
+    Minus,              // 2            1
     LeftShift,          // 3
     RightShift,         // 3
     BitAnd,             // 3
@@ -35,9 +36,34 @@ pub enum Operator {     // Precedence
     And,                // 5
     Or,                 // 5
     Xor,                // 5
+    Not,                // X            1
 }
 
 impl Operator {
+
+    pub fn is_unary_compatible(&self, value: DataType) -> Option<DataType> {
+        match self {
+            Operator::Plus => {
+                match value {
+                    DataType::ComptimeNumber => Some(DataType::ComptimeNumber),
+                    _ => None,
+                }
+            },
+            Operator::Minus => {
+                match value {
+                    DataType::ComptimeNumber => Some(DataType::ComptimeNumber),
+                    _ => None,
+                }
+            },
+            Operator::Not => {
+                match value {
+                    DataType::ComptimeBool => Some(DataType::ComptimeBool),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
+    }
 
     pub fn check_compatibility(&self, left: DataType, right: DataType) -> Option<DataType> {
         return match self {
@@ -186,6 +212,7 @@ impl Operator {
                     _ => None,
                 }
             }
+            Operator::Not => None,
         }
     }
 }

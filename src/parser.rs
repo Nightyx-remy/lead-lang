@@ -119,8 +119,27 @@ impl Parser {
         }
     }
 
+    fn parse_unary(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        return if let Some(current) = self.current() {
+            let start = current.start.clone();
+            let operator = match current.data {
+                Token::Plus => current.convert(Operator::Plus),
+                Token::Minus => current.convert(Operator::Minus),
+                Token::ExclamationMark | Token::Keyword(Keyword::Not) => current.convert(Operator::Not),
+                _ => return self.parse_value(),
+            };
+            self.advance();
+
+            let value = self.parse_value()?;
+            let end = value.end.clone();
+            Ok(Positioned::new(Node::UnaryOperation(operator, Box::new(value)), start, end))
+        } else {
+            Err(Positioned::eof(ParserError::UnexpectedEOF(vec![Either::B("Value".to_string())])))
+        };
+    }
+
     fn parse_bin_op1(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
-        let mut left = self.parse_value()?;
+        let mut left = self.parse_unary()?;
         self.advance();
 
         while let Some(current) = self.current() {
@@ -131,7 +150,7 @@ impl Parser {
                 _ => break
             };
             self.advance();
-            let right = self.parse_value()?;
+            let right = self.parse_unary()?;
             self.advance();
             let start = left.start.clone();
             let end = right.end.clone();
@@ -284,13 +303,11 @@ impl Parser {
     fn parse_current(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
         if let Some(current) = self.current() {
             match current.data.clone() {
-                Token::Plus => todo!("unary op"),
-                Token::Minus => todo!("unary op"),
                 Token::Semicolon => {
                     self.advance();
                     return self.parse_current();
                 }
-                Token::LeftParenthesis | Token::Number(_) | Token::Char(_) | Token::String(_) => {
+                Token::Keyword(Keyword::Not) | Token::ExclamationMark | Token::Plus | Token::Minus | Token::LeftParenthesis | Token::Number(_) | Token::Char(_) | Token::String(_) => {
                     let expr = self.parse_expr()?;
                     self.expect_token(Token::Semicolon)?;
                     self.advance();

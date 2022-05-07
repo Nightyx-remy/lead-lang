@@ -254,7 +254,7 @@ impl Lexer {
                                 end.advance(next);
                                 tokens.push(Positioned::new(Token::ExclamationMarkEqual, start, end));
                             }
-                            _ => todo!("exclamation mark (unary operator)"),
+                            _ => tokens.push(self.make_single(Token::ExclamationMark)),
                         }
                     }
                     '=' => {

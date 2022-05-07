@@ -43,6 +43,7 @@ impl Generator {
             COperator::LessOrEqual => "<=".to_string(),
             COperator::Equal => "==".to_string(),
             COperator::NotEqual => "!=".to_string(),
+            COperator::Not => '!'.to_string(),
         }
     }
 
@@ -54,6 +55,15 @@ impl Generator {
         out.push_str(self.generate_operator(operator).as_str());
         out.push(' ');
         out.push_str(self.generate_node(right).as_str());
+        out.push(')');
+        return out;
+    }
+
+    fn generate_unary_op(&mut self, operator: Positioned<COperator>, value: Positioned<CNode>) -> String {
+        let mut out = String::new();
+        out.push('(');
+        out.push_str(self.generate_operator(operator).as_str());
+        out.push_str(self.generate_node(value).as_str());
         out.push(')');
         return out;
     }
@@ -81,6 +91,7 @@ impl Generator {
     fn generate_node(&mut self, node: Positioned<CNode>) -> String {
         return match node.data {
             CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
+            CNode::UnaryOperation(operator, value) => self.generate_unary_op(operator, *value),
             CNode::Value(value) => self.generate_value(value),
         }
     }

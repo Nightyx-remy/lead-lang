@@ -3,6 +3,7 @@ use crate::Positioned;
 #[derive(Clone, Debug)]
 pub enum CNode {
     BinaryOperation(Box<Positioned<CNode>>, Positioned<COperator>, Box<Positioned<CNode>>),
+    UnaryOperation(Positioned<COperator>, Box<Positioned<CNode>>),
     Value(CValueNode)
 }
 
@@ -25,7 +26,8 @@ pub enum COperator {
     Less,
     LessOrEqual,
     Equal,
-    NotEqual
+    NotEqual,
+    Not,
 }
 
 #[derive(Clone, Debug)]

@@ -64,6 +64,7 @@ impl Transpiler {
             Operator::LessOrEqual => Ok(operator.convert(COperator::LessOrEqual)),
             Operator::Equal => Ok(operator.convert(COperator::Equal)),
             Operator::NotEqual => Ok(operator.convert(COperator::NotEqual)),
+            Operator::Not => Ok(operator.convert(COperator::Not)),
         }
     }
 
@@ -85,9 +86,18 @@ impl Transpiler {
         }
     }
 
+    fn transpile_unary_op(&mut self, operator: Positioned<Operator>, value: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let start = operator.start.clone();
+        let end = value.end.clone();
+        let c_operator = self.transpile_operator(operator)?;
+        let c_value = self.transpile_node(value)?;
+        return Ok(Positioned::new(CNode::UnaryOperation(c_operator, Box::new(c_value)), start, end));
+    }
+
     fn transpile_node(&mut self, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.transpile_bin_op(*left, operator, *right),
+            Node::UnaryOperation(operator, value) => self.transpile_unary_op(operator, *value),
             Node::Value(value) => self.transpile_value(node.convert(value)),
         }
     }

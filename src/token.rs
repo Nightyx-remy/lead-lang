@@ -20,6 +20,7 @@ pub enum Token {
     RightAngleEqual,
     Equal,
     DoubleEqual,
+    ExclamationMark,
     ExclamationMarkEqual,
     LeftParenthesis,
     RightParenthesis,
@@ -36,6 +37,7 @@ pub enum Keyword {
     And,
     Or,
     Xor,
+    Not,
 }
 
 impl Keyword {
@@ -49,6 +51,7 @@ impl Keyword {
             "and" => Some(Keyword::And),
             "or" => Some(Keyword::Or),
             "xor" => Some(Keyword::Xor),
+            "not" => Some(Keyword::Not),
             _ => None
         }
     }
