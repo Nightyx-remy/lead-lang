@@ -119,6 +119,7 @@ impl Parser {
                     self.expect_token(Token::RightParenthesis)?;
                     return Ok(expr);
                 }
+                Token::Identifier(id) => return Ok(current.convert(Node::VariableCall(id))),
                 _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Value".to_string())])))
             }
         } else {
@@ -158,6 +159,7 @@ impl Parser {
                 Token::Plus => current.convert(Operator::Plus),
                 Token::Minus => current.convert(Operator::Minus),
                 Token::ExclamationMark | Token::Keyword(Keyword::Not) => current.convert(Operator::Not),
+                Token::Wave => current.convert(Operator::BitNot),
                 _ => return self.parse_cast(),
             };
             self.advance();
@@ -423,6 +425,26 @@ impl Parser {
         }
     }
 
+    fn handle_identifier(&mut self, id: Positioned<String>) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        if let Some(next) = self.nth(1) {
+            match next.data {
+                Token::Equal => {
+                    self.advance();
+                    self.advance();
+                    let value = self.parse_expr()?;
+                    let start = id.start.clone();
+                    let end = value.end.clone();
+                    let node = Positioned::new(Node::VariableAssignment(id.clone(), Box::new(value)), start, end);
+                    self.expect_token(Token::Semicolon)?;
+                    self.advance();
+                    return Ok(node);
+                }
+                _ => {}
+            }
+        }
+        return self.parse_expr();
+    }
+
     fn parse_current(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
         if let Some(current) = self.current() {
             match current.data.clone() {
@@ -430,7 +452,8 @@ impl Parser {
                     self.advance();
                     return self.parse_current();
                 }
-                Token::Keyword(Keyword::Not) | Token::ExclamationMark | Token::Plus | Token::Minus | Token::LeftParenthesis | Token::Number(_) | Token::Char(_) | Token::String(_) => {
+                Token::Identifier(id) => self.handle_identifier(current.convert(id)),
+                Token::Wave | Token::Keyword(Keyword::Not) | Token::ExclamationMark | Token::Plus | Token::Minus | Token::LeftParenthesis | Token::Number(_) | Token::Char(_) | Token::String(_) => {
                     let expr = self.parse_expr()?;
                     self.expect_token(Token::Semicolon)?;
                     self.advance();

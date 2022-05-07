@@ -10,6 +10,8 @@ pub enum OptimizerError {
     IncompatibleTypes(DataType, DataType),
     MissingType,
     Shadowing(String),
+    VariableNotFound(String),
+    VariableCannotBeModified(String),
 }
 
 impl Display for OptimizerError {
@@ -32,6 +34,12 @@ impl Display for OptimizerError {
             }
             OptimizerError::Shadowing(variable) => {
                 write!(f, "Shadowing of variable '{}'", variable)?;
+            }
+            OptimizerError::VariableNotFound(variable) => {
+                write!(f, "variable '{}' not found", variable)?;
+            }
+            OptimizerError::VariableCannotBeModified(variable) => {
+                write!(f, "variable '{}' cannot be modified", variable)?;
             }
         }
         Ok(())
@@ -174,6 +182,33 @@ impl Optimizer {
         }
     }
 
+    fn optimize_variable_call(&mut self, id: Positioned<String>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
+        return if let Some(variable) = self.get_variable(id.data.clone()) {
+            Ok((Some(variable.data_type.data.clone()), id.clone().convert(Node::VariableCall(id.data.clone()))))
+        } else {
+            Err(id.clone().convert(OptimizerError::VariableNotFound(id.data)))
+        }
+    }
+
+    fn optimize_variable_assignment(&mut self, id: Positioned<String>, value: Positioned<Node>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
+        return if let Some(variable) = self.get_variable(id.data.clone()).cloned() {
+            match (variable.var_type.data, variable.initialized) {
+                (VarType::Var, _) |
+                (VarType::Let, false) => {
+                    let value_result = self.optimize_node(value.clone())?;
+                    if !value_result.0.clone().unwrap().is_convertible(variable.data_type.data.clone()) {
+                        Err(Positioned::new(OptimizerError::IncompatibleTypes(value_result.0.unwrap(), variable.data_type.data), id.start.clone(), value.end.clone()))
+                    } else {
+                        Ok((None, Positioned::new(Node::VariableAssignment(id.clone(), Box::new(value_result.1)), id.start.clone(), value.end.clone())))
+                    }
+                }
+                _ => Err(Positioned::new(OptimizerError::VariableCannotBeModified(id.data.clone()), id.start.clone(), value.end.clone())),
+            }
+        } else {
+            Err(Positioned::new(OptimizerError::VariableNotFound(id.data.clone()), id.start.clone(), value.end.clone()))
+        }
+    }
+
     fn optimize_node(&mut self, node: Positioned<Node>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.check_bin_op(*left, operator, *right),
@@ -181,6 +216,8 @@ impl Optimizer {
             Node::Value(value) => Ok((Some(DataType::from(value)), node.clone())),
             Node::VariableDefinition(var_type, name, data_type, value) => self.check_variable_definition(var_type, name, data_type, value),
             Node::Casting(left, right) => self.optimize_casting(*left, right),
+            Node::VariableCall(id) => self.optimize_variable_call(node.convert(id)),
+            Node::VariableAssignment(id, value) => self.optimize_variable_assignment(id, *value),
         }
     }
 

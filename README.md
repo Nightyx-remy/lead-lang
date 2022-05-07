@@ -4,15 +4,23 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.2.0] (current)
+### Version [0.2.2] (current)
+- Variable Call
+- Variable Assignment
+- Unary BitNot operator
+
+### Version [0.2.1] 
+- Casting
+
+### Version [0.2.0]
 - Variable Definition
   - Var
   - Let
   - Const
 - Basic type (+ comptime version)
-  - u8, u16, u32, u64 
-  - i8, i16, i32, i64 
-  - char 
+  - u8, u16, u32, u64
+  - i8, i16, i32, i64
+  - char
   - boolean
 
 ### Version [0.1.3] 

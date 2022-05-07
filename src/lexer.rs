@@ -204,6 +204,7 @@ impl Lexer {
                     '(' => tokens.push(self.make_single(Token::LeftParenthesis)),
                     ')' => tokens.push(self.make_single(Token::RightParenthesis)),
                     ':' => tokens.push(self.make_single(Token::Colon)),
+                    '~' => tokens.push(self.make_single(Token::Wave)),
                     '<' => {
                         let next = self.peek(1);
                         match next {

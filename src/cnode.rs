@@ -6,6 +6,8 @@ pub enum CNode {
     UnaryOperation(Positioned<COperator>, Box<Positioned<CNode>>),
     Value(CValueNode),
     VariableDef(Positioned<CType>, bool, Positioned<String>, Option<Box<Positioned<CNode>>>),
+    VariableCall(String),
+    VariableAssignment(Positioned<String>, Box<Positioned<CNode>>),
     Casting(Box<Positioned<CNode>>, Positioned<CType>)
 }
 
@@ -23,6 +25,7 @@ pub enum COperator {
     BitAnd,
     BitOr,
     BitXor,
+    BitNot,
     Greater,
     GreaterOrEqual,
     Less,

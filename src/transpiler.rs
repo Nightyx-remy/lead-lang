@@ -58,6 +58,7 @@ impl Transpiler {
             Operator::BitAnd => Ok(operator.convert(COperator::BitAnd)),
             Operator::BitOr => Ok(operator.convert(COperator::BitOr)),
             Operator::BitXor => Ok(operator.convert(COperator::BitXor)),
+            Operator::BitNot => Ok(operator.convert(COperator::BitNot)),
             Operator::Greater => Ok(operator.convert(COperator::Greater)),
             Operator::GreaterOrEqual => Ok(operator.convert(COperator::GreaterOrEqual)),
             Operator::Less => Ok(operator.convert(COperator::Less)),
@@ -164,6 +165,17 @@ impl Transpiler {
         return Ok(Positioned::new(CNode::Casting(Box::new(c_left), c_right), left.start, right.end));
     }
 
+    fn transpile_variable_call(&mut self, id: Positioned<String>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        return Ok(id.clone().convert(CNode::VariableCall(id.data.clone())));
+    }
+
+    fn transpile_variable_assignment(&mut self, id: Positioned<String>, value: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let c_value = self.transpile_node(value.clone())?;
+        let start = id.start.clone();
+        let end = value.end.clone();
+        return Ok(Positioned::new(CNode::VariableAssignment(id.clone(), Box::new(c_value)), start, end));
+    }
+
     fn transpile_node(&mut self, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.transpile_bin_op(*left, operator, *right),
@@ -171,6 +183,8 @@ impl Transpiler {
             Node::Value(value) => self.transpile_value(node.convert(value)),
             Node::VariableDefinition(var_type, name, data_type, value) => self.transpile_variable_def(var_type, name, data_type, value),
             Node::Casting(left, right) => self.translate_casting(*left, right),
+            Node::VariableCall(id) => self.transpile_variable_call(node.convert(id)),
+            Node::VariableAssignment(id, value) => self.transpile_variable_assignment(id, *value),
         }
     }
 

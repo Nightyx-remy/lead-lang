@@ -37,6 +37,7 @@ impl Generator {
             COperator::BitAnd => '&'.to_string(),
             COperator::BitOr => '|'.to_string(),
             COperator::BitXor => '^'.to_string(),
+            COperator::BitNot => '~'.to_string(),
             COperator::Greater => '>'.to_string(),
             COperator::GreaterOrEqual => ">=".to_string(),
             COperator::Less => '<'.to_string(),
@@ -128,13 +129,27 @@ impl Generator {
         return str;
     }
 
+    fn generate_variable_call(&mut self, id: Positioned<String>) -> String {
+        return id.data.clone();
+    }
+
+    fn generate_variable_assignment(&mut self, id: Positioned<String>, value: Positioned<CNode>) -> String {
+        let mut str = String::new();
+        str.push_str(id.data.as_str());
+        str.push_str(" = ");
+        str.push_str(self.generate_node(value).as_str());
+        return str;
+    }
+
     fn generate_node(&mut self, node: Positioned<CNode>) -> String {
-        return match node.data {
+        return match node.data.clone() {
             CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
             CNode::UnaryOperation(operator, value) => self.generate_unary_op(operator, *value),
             CNode::Value(value) => self.generate_value(value),
             CNode::VariableDef(data_type, is_const, name, value) => self.generate_variable_def(data_type, is_const, name, value),
             CNode::Casting(left, right) => self.generate_cast(*left, right),
+            CNode::VariableCall(id) => self.generate_variable_call(node.convert(id)),
+            CNode::VariableAssignment(id, value) => self.generate_variable_assignment(id, *value),
         }
     }
 

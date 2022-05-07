@@ -13,6 +13,7 @@ pub enum Token {
     DoublePipe,
     Hat,
     DoubleHat,
+    Wave,
     LeftAngle,
     DoubleLeftAngle,
     LeftAngleEqual,

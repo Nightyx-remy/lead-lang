@@ -6,6 +6,8 @@ pub enum Node {
     UnaryOperation(Positioned<Operator>, Box<Positioned<Node>>),
     Value(ValueNode),
     VariableDefinition(Positioned<VarType>, Positioned<String>, Option<Positioned<DataType>>, Option<Box<Positioned<Node>>>),
+    VariableCall(String),
+    VariableAssignment(Positioned<String>, Box<Positioned<Node>>),
     Casting(Box<Positioned<Node>>, Positioned<DataType>),
 }
 
@@ -29,6 +31,7 @@ pub enum Operator {     // Precedence   Unary-Precedence
     BitAnd,             // 3
     BitOr,              // 3
     BitXor,             // 3
+    BitNot,             // X            1
     Greater,            // 4
     GreaterOrEqual,     // 4
     Less,               // 4
@@ -60,6 +63,12 @@ impl Operator {
             Operator::Not => {
                 match value {
                     DataType::ComptimeBool => Some(DataType::ComptimeBool),
+                    _ => None,
+                }
+            },
+            Operator::BitNot => {
+                match value {
+                    DataType::ComptimeNumber => Some(DataType::ComptimeNumber),
                     _ => None,
                 }
             },
@@ -215,6 +224,7 @@ impl Operator {
                 }
             }
             Operator::Not => None,
+            Operator::BitNot => None,
         }
     }
 }
