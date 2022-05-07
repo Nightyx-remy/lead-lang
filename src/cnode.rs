@@ -4,7 +4,8 @@ use crate::Positioned;
 pub enum CNode {
     BinaryOperation(Box<Positioned<CNode>>, Positioned<COperator>, Box<Positioned<CNode>>),
     UnaryOperation(Positioned<COperator>, Box<Positioned<CNode>>),
-    Value(CValueNode)
+    Value(CValueNode),
+    VariableDef(Positioned<CType>, bool, Positioned<String>, Option<Box<Positioned<CNode>>>)
 }
 
 #[derive(Clone, Debug)]
@@ -35,4 +36,17 @@ pub enum CValueNode {
     Number(String),
     String(String),
     Char(String),
+}
+
+#[derive(Clone, Debug)]
+pub enum CType {
+    Byte,
+    UnsignedByte,
+    Short,
+    UnsignedShort,
+    Int,
+    UnsignedInt,
+    Long,
+    UnsignedLong,
+    Char,
 }

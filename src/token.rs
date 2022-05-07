@@ -6,6 +6,7 @@ pub enum Token {
     Slash,
     Percent,
     Semicolon,
+    Colon,
     And,
     DoubleAnd,
     Pipe,
@@ -28,6 +29,7 @@ pub enum Token {
     Char(String),
     String(String),
     Keyword(Keyword),
+    Identifier(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -38,6 +40,21 @@ pub enum Keyword {
     Or,
     Xor,
     Not,
+    Var,
+    Let,
+    Const,
+    Comptime,
+    U8,
+    U16,
+    U32,
+    U64,
+    I8,
+    I16,
+    I32,
+    I64,
+    Bool,
+    Str,
+    Char,
 }
 
 impl Keyword {
@@ -52,6 +69,21 @@ impl Keyword {
             "or" => Some(Keyword::Or),
             "xor" => Some(Keyword::Xor),
             "not" => Some(Keyword::Not),
+            "var" => Some(Keyword::Var),
+            "let" => Some(Keyword::Let),
+            "const" => Some(Keyword::Const),
+            "comptime" => Some(Keyword::Comptime),
+            "u8" => Some(Keyword::U8),
+            "u16" => Some(Keyword::U16),
+            "u32" => Some(Keyword::U32),
+            "u64" => Some(Keyword::U64),
+            "i8" => Some(Keyword::I8),
+            "i16" => Some(Keyword::I16),
+            "i32" => Some(Keyword::I32),
+            "i64" => Some(Keyword::I64),
+            "bool" => Some(Keyword::Bool),
+            "str" => Some(Keyword::Str),
+            "char" => Some(Keyword::Char),
             _ => None
         }
     }

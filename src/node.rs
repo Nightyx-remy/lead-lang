@@ -4,7 +4,8 @@ use crate::Positioned;
 pub enum Node {
     BinaryOperation(Box<Positioned<Node>>, Positioned<Operator>, Box<Positioned<Node>>),
     UnaryOperation(Positioned<Operator>, Box<Positioned<Node>>),
-    Value(ValueNode)
+    Value(ValueNode),
+    VariableDefinition(Positioned<VarType>, Positioned<String>, Option<Positioned<DataType>>, Option<Box<Positioned<Node>>>),
 }
 
 #[derive(Clone, Debug)]
@@ -217,12 +218,23 @@ impl Operator {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataType {
     ComptimeNumber,
     ComptimeString,
     ComptimeChar,
     ComptimeBool,
+    U8,
+    U16,
+    U32,
+    U64,
+    I8,
+    I16,
+    I32,
+    I64,
+    String,
+    Bool,
+    Char,
 }
 
 impl DataType {
@@ -233,6 +245,27 @@ impl DataType {
             DataType::ComptimeString => true,
             DataType::ComptimeChar => true,
             DataType::ComptimeBool => true,
+            _ => false
+        }
+    }
+
+    pub fn is_convertible(&self, other: DataType) -> bool {
+        if *self == other {
+            return true;
+        }
+        match (self, other) {
+            (DataType::ComptimeNumber, DataType::U8) |
+            (DataType::ComptimeNumber, DataType::U16) |
+            (DataType::ComptimeNumber, DataType::U32) |
+            (DataType::ComptimeNumber, DataType::U64) |
+            (DataType::ComptimeNumber, DataType::I8) |
+            (DataType::ComptimeNumber, DataType::I16) |
+            (DataType::ComptimeNumber, DataType::I32) |
+            (DataType::ComptimeNumber, DataType::I64) => true,
+            (DataType::ComptimeString, DataType::String) => true,
+            (DataType::ComptimeBool, DataType::Bool) => true,
+            (DataType::ComptimeChar, DataType::Char) => true,
+            _ => false,
         }
     }
 
@@ -247,4 +280,11 @@ impl From<ValueNode> for DataType {
             ValueNode::Boolean(_) => Self::ComptimeBool,
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VarType {
+    Var,
+    Let,
+    Const
 }

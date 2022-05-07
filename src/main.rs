@@ -1,8 +1,10 @@
+extern crate core;
+
 use crate::generator::Generator;
-use crate::lexer::{Lexer, LexerError};
+use crate::lexer::Lexer;
 use crate::node::Node;
-use crate::optimizer::{Optimizer, OptimizerError};
-use crate::parser::{Parser, ParserError};
+use crate::optimizer::Optimizer;
+use crate::parser::Parser;
 use crate::position::Positioned;
 use crate::token::Token;
 use crate::transpiler::Transpiler;
@@ -20,7 +22,7 @@ mod generator;
 
 fn main() {
     // File
-    let mut str = "3 + -1;-(5 + 3);true ^^ false;".to_string();
+    let mut str = std::fs::read_to_string("main.lead").expect("Failed to read file 'main.lead'");
 
     // Lexer
     let mut lexer = Lexer::new(str);

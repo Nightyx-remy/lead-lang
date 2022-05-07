@@ -1,4 +1,4 @@
-use crate::cnode::{CNode, COperator, CValueNode};
+use crate::cnode::{CNode, COperator, CType, CValueNode};
 use crate::Positioned;
 
 pub struct Generator {
@@ -88,11 +88,43 @@ impl Generator {
         }
     }
 
+    fn generate_type(&mut self, data_type: Positioned<CType>) -> String {
+        return match data_type.data {
+            CType::Byte => "byte".to_string(),
+            CType::UnsignedByte => "unsigned byte".to_string(),
+            CType::Short => "short".to_string(),
+            CType::UnsignedShort => "unsigned short".to_string(),
+            CType::Int => "int".to_string(),
+            CType::UnsignedInt => "unsigned int".to_string(),
+            CType::Long => "long".to_string(),
+            CType::UnsignedLong => "unsigned long".to_string(),
+            CType::Char => "char".to_string(),
+        }
+    }
+
+    fn generate_variable_def(&mut self, data_type: Positioned<CType>, is_const: bool, name: Positioned<String>, value: Option<Box<Positioned<CNode>>>) -> String {
+        let mut str = String::new();
+
+        str.push_str(self.generate_type(data_type).as_str());
+        if is_const {
+            str.push_str(" const");
+        }
+        str.push(' ');
+        str.push_str(name.data.as_str());
+        if let Some(value) = value {
+            str.push_str(" = ");
+            str.push_str(self.generate_node(*value).as_str());
+        }
+
+        return str;
+    }
+
     fn generate_node(&mut self, node: Positioned<CNode>) -> String {
         return match node.data {
             CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
             CNode::UnaryOperation(operator, value) => self.generate_unary_op(operator, *value),
             CNode::Value(value) => self.generate_value(value),
+            CNode::VariableDef(data_type, is_const, name, value) => self.generate_variable_def(data_type, is_const, name, value),
         }
     }
 

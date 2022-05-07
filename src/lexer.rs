@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use std::io::Take;
 use crate::position::{Position, Positioned};
 use crate::token::{Keyword, Token};
 
@@ -102,10 +101,10 @@ impl Lexer {
         }
         let end = self.pos.clone();
 
-        if let Some(keyword) = Keyword::get_keyword(str) {
-            return Positioned::new(Token::Keyword(keyword), start, end);
+        return if let Some(keyword) = Keyword::get_keyword(str.clone()) {
+            Positioned::new(Token::Keyword(keyword), start, end)
         } else {
-            todo!("Identifier")
+            Positioned::new(Token::Identifier(str), start, end)
         }
     }
 
@@ -204,6 +203,7 @@ impl Lexer {
                     ';' => tokens.push(self.make_single(Token::Semicolon)),
                     '(' => tokens.push(self.make_single(Token::LeftParenthesis)),
                     ')' => tokens.push(self.make_single(Token::RightParenthesis)),
+                    ':' => tokens.push(self.make_single(Token::Colon)),
                     '<' => {
                         let next = self.peek(1);
                         match next {
@@ -267,7 +267,7 @@ impl Lexer {
                                 end.advance(next);
                                 tokens.push(Positioned::new(Token::DoubleEqual, start, end));
                             }
-                            _ => todo!("equal (variable)"),
+                            _ => tokens.push(self.make_single(Token::Equal)),
                         }
                     }
                     '&' => {

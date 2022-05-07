@@ -1,13 +1,15 @@
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use crate::{Node, Positioned};
-use crate::node::{DataType, Operator, ValueNode};
-use crate::position::Position;
+use crate::node::{DataType, Operator, VarType};
 
 pub enum OptimizerError {
     IncompatibleBinOperator(DataType, Operator, DataType),
     IncompatibleUnaryOperator(Operator, DataType),
     InvalidNumber(String, ParseIntError),
+    IncompatibleTypes(DataType, DataType),
+    MissingType,
+    Shadowing(String),
 }
 
 impl Display for OptimizerError {
@@ -22,15 +24,33 @@ impl Display for OptimizerError {
             OptimizerError::InvalidNumber(num, error) => {
                 write!(f, "Invalid number '{}', {:?}", num, error)?;
             }
+            OptimizerError::IncompatibleTypes(expected, given) => {
+                write!(f, "Incompatible types: expected '{:?}', found '{:?}'", expected, given)?;
+            }
+            OptimizerError::MissingType => {
+                write!(f, "Missing type")?;
+            }
+            OptimizerError::Shadowing(variable) => {
+                write!(f, "Shadowing of variable '{}'", variable)?;
+            }
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct VariableData {
+    name: Positioned<String>,
+    var_type: Positioned<VarType>,
+    data_type: Positioned<DataType>,
+    initialized: bool,
 }
 
 pub struct Optimizer {
     src: String,
     ast: Vec<Positioned<Node>>,
     index: usize,
+    variables: Vec<VariableData>,
 }
 
 impl Optimizer {
@@ -39,7 +59,8 @@ impl Optimizer {
         return Self {
             src,
             ast,
-            index: 0
+            index: 0,
+            variables: vec![]
         }
     }
 
@@ -55,40 +76,100 @@ impl Optimizer {
         return self.ast.get(self.index).cloned();
     }
 
-    fn check_bin_op(&mut self, left: Positioned<Node>, operator: Positioned<Operator>, right: Positioned<Node>) -> Result<(DataType, Positioned<Node>), Positioned<OptimizerError>> {
+    fn get_variable(&mut self, name: String) -> Option<&mut VariableData> {
+        for variable in self.variables.iter_mut() {
+            if variable.name.data == name {
+                return Some(variable);
+            }
+        }
+        return None;
+    }
+
+    fn add_variable(&mut self, variable: VariableData) {
+        self.variables.push(variable);
+    }
+
+    fn check_bin_op(&mut self, left: Positioned<Node>, operator: Positioned<Operator>, right: Positioned<Node>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
         let start = left.start.clone();
         let end = right.end.clone();
 
         let left_result = self.optimize_node(left)?;
         let right_result = self.optimize_node(right)?;
 
-        return if let Some(output_type) = operator.data.check_compatibility(left_result.0.clone(), right_result.0.clone()) {
+        return if let Some(output_type) = operator.data.check_compatibility(left_result.0.clone().unwrap(), right_result.0.clone().unwrap()) {
             Ok((
-                output_type,
+                Some(output_type),
                 Positioned::new(Node::BinaryOperation(Box::new(left_result.1), operator.clone(), Box::new(right_result.1)), start, end)
             ))
         } else {
-            Err(Positioned::new(OptimizerError::IncompatibleBinOperator(left_result.0, operator.data, right_result.0), start, end))
+            Err(Positioned::new(OptimizerError::IncompatibleBinOperator(left_result.0.unwrap(), operator.data, right_result.0.unwrap()), start, end))
         }
     }
 
-    fn check_unary_op(&mut self, operator: Positioned<Operator>, value: Positioned<Node>) -> Result<(DataType, Positioned<Node>), Positioned<OptimizerError>> {
+    fn check_unary_op(&mut self, operator: Positioned<Operator>, value: Positioned<Node>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
         let start = operator.start.clone();
         let end = value.end.clone();
 
         let value_result = self.optimize_node(value)?;
-        return if let Some(output_type) = operator.data.is_unary_compatible(value_result.0.clone()) {
-            Ok((output_type, Positioned::new(Node::UnaryOperation(operator, Box::new(value_result.1)), start, end)))
+        return if let Some(output_type) = operator.data.is_unary_compatible(value_result.0.clone().unwrap()) {
+            Ok((Some(output_type), Positioned::new(Node::UnaryOperation(operator, Box::new(value_result.1)), start, end)))
         } else {
-            Err(Positioned::new(OptimizerError::IncompatibleUnaryOperator(operator.data, value_result.0), start, end))
+            Err(Positioned::new(OptimizerError::IncompatibleUnaryOperator(operator.data, value_result.0.unwrap()), start, end))
         }
     }
 
-    fn optimize_node(&mut self, node: Positioned<Node>) -> Result<(DataType, Positioned<Node>), Positioned<OptimizerError>> {
+    fn check_variable_definition(&mut self, var_type: Positioned<VarType>, name: Positioned<String>, data_type: Option<Positioned<DataType>>, value: Option<Box<Positioned<Node>>>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
+        return if self.get_variable(name.data.clone()).is_some() {
+            // Shadowing
+            let start = var_type.start.clone();
+            let end = value.clone().map(|value| value.end).unwrap_or(data_type.clone().map(|value| value.end).unwrap_or(name.end.clone()));
+
+            Err(Positioned::new(OptimizerError::Shadowing(name.data.clone()), start, end))
+        } else {
+            // New variable
+
+            // Check if the type correspond to the value
+            let f_data_type;
+            let end;
+            if let Some(value) = value.clone() {
+                let result_value = self.optimize_node(*value.clone())?;
+
+                if let Some(data_type) = data_type {
+                    if !result_value.0.as_ref().unwrap().is_convertible(data_type.data.clone()) {
+                        return Err(value.convert(OptimizerError::IncompatibleTypes(data_type.data, result_value.0.unwrap())))
+                    }
+                    f_data_type = data_type;
+                } else {
+                    f_data_type = result_value.1.convert(result_value.0.unwrap());
+                }
+                end = value.end.clone();
+            } else if let Some(data_type) = data_type {
+                f_data_type = data_type.clone();
+                end = data_type.end.clone();
+            } else {
+                return Err(Positioned::new(OptimizerError::MissingType, var_type.start.clone(), name.end.clone()));
+            }
+
+            // Initialize variable
+            let variable = VariableData {
+                name: name.clone(),
+                var_type: var_type.clone(),
+                data_type: f_data_type.clone(),
+                initialized: value.is_some()
+            };
+            self.add_variable(variable);
+
+            // Return node
+            Ok((None, Positioned::new(Node::VariableDefinition(var_type.clone(), name.clone(), Some(f_data_type.clone()), value.clone()), var_type.start.clone(), end)))
+        }
+    }
+
+    fn optimize_node(&mut self, node: Positioned<Node>) -> Result<(Option<DataType>, Positioned<Node>), Positioned<OptimizerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.check_bin_op(*left, operator, *right),
             Node::UnaryOperation(operator, value) => self.check_unary_op(operator, *value),
-            Node::Value(value) => Ok((DataType::from(value), node.clone())),
+            Node::Value(value) => Ok((Some(DataType::from(value)), node.clone())),
+            Node::VariableDefinition(var_type, name, data_type, value) => self.check_variable_definition(var_type, name, data_type, value),
         }
     }
 

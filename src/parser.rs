@@ -1,8 +1,7 @@
 use std::fmt::{Display, Formatter};
-use std::thread::current;
 use crate::{Positioned, Token};
 use crate::either::Either;
-use crate::node::{Node, Operator, ValueNode};
+use crate::node::{DataType, Node, Operator, ValueNode, VarType};
 use crate::token::Keyword;
 
 pub enum ParserError {
@@ -91,6 +90,14 @@ impl Parser {
             return Err(Positioned::eof(ParserError::UnexpectedEOF(vec![Either::A(token)])));
         }
         return Ok(());
+    }
+
+    fn expect_current(&mut self, expect: Vec<Either<Token, String>>) -> Result<Positioned<Token>, Positioned<ParserError>> {
+        return if let Some(current) = self.current() {
+            Ok(current)
+        } else {
+            Err(Positioned::eof(ParserError::UnexpectedEOF(expect)))
+        }
     }
 
     fn parse_value(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
@@ -288,14 +295,107 @@ impl Parser {
         return self.parse_bin_op5();
     }
 
+    fn parse_type(&mut self) -> Result<Positioned<DataType>, Positioned<ParserError>> {
+        let mut current = self.expect_current(vec![Either::B("type".to_string())])?;
+        return match current.data {
+            Token::Keyword(Keyword::U8) => Ok(current.convert(DataType::U8)),
+            Token::Keyword(Keyword::U16) => Ok(current.convert(DataType::U16)),
+            Token::Keyword(Keyword::U32) => Ok(current.convert(DataType::U32)),
+            Token::Keyword(Keyword::U64) => Ok(current.convert(DataType::U64)),
+            Token::Keyword(Keyword::I8) => Ok(current.convert(DataType::I8)),
+            Token::Keyword(Keyword::I16) => Ok(current.convert(DataType::I16)),
+            Token::Keyword(Keyword::I32) => Ok(current.convert(DataType::I32)),
+            Token::Keyword(Keyword::I64) => Ok(current.convert(DataType::I64)),
+            Token::Keyword(Keyword::Str) => Ok(current.convert(DataType::String)),
+            Token::Keyword(Keyword::Bool) => Ok(current.convert(DataType::Bool)),
+            Token::Keyword(Keyword::Char) => Ok(current.convert(DataType::Char)),
+            Token::Keyword(Keyword::Comptime) => {
+                self.advance();
+                current = self.expect_current(vec![Either::B("type".to_string())])?;
+                match current.data {
+                    Token::Keyword(Keyword::U8) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::U16) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::U32) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::U64) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::I8) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::I16) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::I32) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::I64) => Ok(current.convert(DataType::ComptimeNumber)),
+                    Token::Keyword(Keyword::Str) => Ok(current.convert(DataType::ComptimeString)),
+                    Token::Keyword(Keyword::Bool) => Ok(current.convert(DataType::ComptimeBool)),
+                    Token::Keyword(Keyword::Char) => Ok(current.convert(DataType::ComptimeChar)),
+                    _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("type".to_string())]))),
+                }
+            }
+            _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("type".to_string())]))),
+        }
+    }
+
+    fn parse_var_definition(&mut self, var_type: Positioned<VarType>) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        let start = var_type.start.clone();
+        self.advance();
+        let mut current = self.expect_current(vec![Either::B("Identifier".to_string())])?;
+        return if let Token::Identifier(id_str) = current.data.clone() {
+            let id = current.convert(id_str);
+            self.advance();
+
+            let mut end = id.end.clone();
+            current = self.expect_current(vec![if var_type.data == VarType::Const { Either::A(Token::Equal) } else { Either::A(Token::Semicolon) }])?;
+
+            let mut data_type = None;
+            if current.data == Token::Colon {
+                // Type
+                self.advance();
+                let type_node = self.parse_type()?;
+                end = type_node.end.clone();
+                data_type = Some(type_node);
+                self.advance();
+                current = self.expect_current(vec![if var_type.data == VarType::Const { Either::A(Token::Equal) } else { Either::A(Token::Semicolon) }])?;
+            }
+
+            let mut value = None;
+            if current.data == Token::Equal {
+                // Value
+                self.advance();
+                let value_node = self.parse_expr()?;
+                end = value_node.end.clone();
+                value = Some(Box::new(value_node));
+            } else if var_type.data == VarType::Const {
+                return Err(var_type.convert(ParserError::UnexpectedToken(Token::Keyword(Keyword::Const), vec![Either::A(Token::Keyword(Keyword::Var)), Either::A(Token::Keyword(Keyword::Let))])))
+            }
+
+            Ok(Positioned::new(Node::VariableDefinition(var_type, id, data_type, value), start, end))
+        } else {
+            Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])))
+        }
+    }
+
     fn parse_keyword(&mut self, keyword: Positioned<Keyword>) -> Result<Positioned<Node>, Positioned<ParserError>> {
         return match keyword.data.clone() {
             Keyword::True | Keyword::False => {
                 let expr = self.parse_expr()?;
                 self.expect_token(Token::Semicolon)?;
                 self.advance();
-                return Ok(expr);
+                Ok(expr)
             },
+            Keyword::Var => {
+                let expr = self.parse_var_definition(keyword.convert(VarType::Var))?;
+                self.expect_token(Token::Semicolon)?;
+                self.advance();
+                Ok(expr)
+            }
+            Keyword::Let => {
+                let expr = self.parse_var_definition(keyword.convert(VarType::Let))?;
+                self.expect_token(Token::Semicolon)?;
+                self.advance();
+                Ok(expr)
+            }
+            Keyword::Const => {
+                let expr = self.parse_var_definition(keyword.convert(VarType::Const))?;
+                self.expect_token(Token::Semicolon)?;
+                self.advance();
+                Ok(expr)
+            }
             kw => Err(keyword.convert(ParserError::UnexpectedToken(Token::Keyword(kw), vec![]))),
         }
     }

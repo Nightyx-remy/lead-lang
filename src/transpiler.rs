@@ -1,8 +1,7 @@
 use std::fmt::{Display, Formatter};
-use std::os::linux::raw::stat;
 use crate::{Node, Positioned};
-use crate::cnode::{CNode, COperator, CValueNode};
-use crate::node::{Operator, ValueNode};
+use crate::cnode::{CNode, COperator, CType, CValueNode};
+use crate::node::{DataType, Operator, ValueNode, VarType};
 
 pub enum TranspilerError {
 
@@ -53,7 +52,7 @@ impl Transpiler {
             Operator::Remainder => Ok(operator.convert(COperator::Remainder)),
             Operator::And => Ok(operator.convert(COperator::And)),
             Operator::Or => Ok(operator.convert(COperator::Or)),
-            Operator::Xor => todo!("Xor operating (need the not operator)"),
+            Operator::Xor => panic!("Should not happen!"),
             Operator::LeftShift => Ok(operator.convert(COperator::LeftShift)),
             Operator::RightShift => Ok(operator.convert(COperator::RightShift)),
             Operator::BitAnd => Ok(operator.convert(COperator::BitAnd)),
@@ -118,11 +117,52 @@ impl Transpiler {
         return Ok(Positioned::new(CNode::UnaryOperation(c_operator, Box::new(c_value)), start, end));
     }
 
+    fn transpile_type(&mut self, data_type: Positioned<DataType>) -> Result<Positioned<CType>, Positioned<TranspilerError>> {
+        match data_type.data.clone() {
+            DataType::ComptimeNumber => return Ok(data_type.convert(CType::Int)),
+            DataType::ComptimeString => todo!("need pointer"),
+            DataType::ComptimeChar => return Ok(data_type.convert(CType::Char)),
+            DataType::ComptimeBool => return Ok(data_type.convert(CType::Int)),
+            DataType::U8 => return Ok(data_type.convert(CType::UnsignedByte)),
+            DataType::U16 => return Ok(data_type.convert(CType::UnsignedShort)),
+            DataType::U32 => return Ok(data_type.convert(CType::UnsignedInt)),
+            DataType::U64 => return Ok(data_type.convert(CType::UnsignedLong)),
+            DataType::I8 => return Ok(data_type.convert(CType::Byte)),
+            DataType::I16 => return Ok(data_type.convert(CType::Short)),
+            DataType::I32 => return Ok(data_type.convert(CType::Int)),
+            DataType::I64 => return Ok(data_type.convert(CType::Long)),
+            DataType::String => todo!("need Custom type and std lib"),
+            DataType::Bool => return Ok(data_type.convert(CType::Int)),
+            DataType::Char => return Ok(data_type.convert(CType::Char)),
+        }
+    }
+
+    fn transpile_variable_def(&mut self, var_type: Positioned<VarType>, name: Positioned<String>, data_type: Option<Positioned<DataType>>, value: Option<Box<Positioned<Node>>>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let start = var_type.start;
+        let end = value.clone().map(|value| value.end).unwrap_or(data_type.clone().unwrap().end);
+
+        let is_const = match var_type.data {
+            VarType::Var => false,
+            VarType::Let => value.is_some(),
+            VarType::Const => true,
+        };
+
+        let c_value = if let Some(value) = value {
+            Some(Box::new(self.transpile_node(*value)?))
+        } else {
+            None
+        };
+        let c_type = self.transpile_type(data_type.unwrap())?;
+
+        return Ok(Positioned::new(CNode::VariableDef(c_type, is_const, name.clone(), c_value), start, end));
+    }
+
     fn transpile_node(&mut self, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.transpile_bin_op(*left, operator, *right),
             Node::UnaryOperation(operator, value) => self.transpile_unary_op(operator, *value),
             Node::Value(value) => self.transpile_value(node.convert(value)),
+            Node::VariableDefinition(var_type, name, data_type, value) => self.transpile_variable_def(var_type, name, data_type, value),
         }
     }
 
