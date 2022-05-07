@@ -4,7 +4,22 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.1.1] (current)
+### Version [0.1.2] (current)
+- More binary operation + comptime optimization
+  - bit and               
+  - bit or                
+  - bit xor               
+  - left shift            
+  - right shift          
+  - greater             
+  - greater or equal     
+  - less                 
+  - less or equal        
+  - equal                 
+  - not equal 
+- Support of parenthesis in binary operation            
+
+### Version [0.1.1] 
 - Boolean binary operation
   - and
   - or
