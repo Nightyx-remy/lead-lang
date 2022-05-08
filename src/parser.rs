@@ -160,6 +160,23 @@ impl Parser {
                 Token::Minus => current.convert(Operator::Minus),
                 Token::ExclamationMark | Token::Keyword(Keyword::Not) => current.convert(Operator::Not),
                 Token::Wave => current.convert(Operator::BitNot),
+                Token::Keyword(Keyword::Ref) => current.convert(Operator::Ref),
+                Token::Keyword(Keyword::Deref) => current.convert(Operator::Deref),
+                Token::Keyword(Keyword::Const) => {
+                    let next = self.nth(1);
+                    if let Some(next) = next {
+                         if let Token::Keyword(Keyword::Ref) = next.data {
+                            let start = current.start.clone();
+                            let end = next.end.clone();
+                            self.advance();
+                            Positioned::new(Operator::ConstRef, start, end)
+                        } else {
+                             return self.parse_cast();
+                         }
+                    } else {
+                        return self.parse_cast();
+                    }
+                }
                 _ => return self.parse_cast(),
             };
             self.advance();
@@ -352,6 +369,46 @@ impl Parser {
                     _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("type".to_string())]))),
                 }
             }
+            Token::Keyword(Keyword::Ref) => {
+                let start = current.start.clone();
+                self.advance();
+                let inner = self.parse_type()?;
+                let end = inner.end.clone();
+                Ok(Positioned::new(DataType::Ref(Box::new(inner)), start, end))
+            }
+            Token::Keyword(Keyword::Const) => {
+                return if let Some(next) = self.nth(1) {
+                    if let Token::Keyword(Keyword::Ref) = next.data {
+                        let start = current.start.clone();
+                        self.advance();
+                        self.advance();
+                        let inner = self.parse_type()?;
+                        let end = inner.end.clone();
+                        Ok(Positioned::new(DataType::ConstRef(Box::new(inner)), start, end))
+                    } else {
+                        Err(next.clone().convert(ParserError::UnexpectedToken(next.data, vec![Either::A(Token::Keyword(Keyword::Ref))])))
+                    }
+                } else {
+                    Err(Positioned::eof(ParserError::UnexpectedEOF(vec![Either::A(Token::Keyword(Keyword::Ref))])))
+                }
+            }
+            Token::And => {
+                if let Some(next) = self.nth(1) {
+                    if let Token::Keyword(Keyword::Const) = next.data {
+                        let start = current.start.clone();
+                        self.advance();
+                        self.advance();
+                        let inner = self.parse_type()?;
+                        let end = inner.end.clone();
+                        return Ok(Positioned::new(DataType::ConstRef(Box::new(inner)), start, end));
+                    }
+                }
+                let start = current.start.clone();
+                self.advance();
+                let inner = self.parse_type()?;
+                let end = inner.end.clone();
+                Ok(Positioned::new(DataType::Ref(Box::new(inner)), start, end))
+            }
             _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("type".to_string())]))),
         }
     }
@@ -453,7 +510,21 @@ impl Parser {
                     return self.parse_current();
                 }
                 Token::Identifier(id) => self.handle_identifier(current.convert(id)),
-                Token::Wave | Token::Keyword(Keyword::Not) | Token::ExclamationMark | Token::Plus | Token::Minus | Token::LeftParenthesis | Token::Number(_) | Token::Char(_) | Token::String(_) => {
+                // Unary Operators
+                Token::Wave |
+                Token::Keyword(Keyword::Not) |
+                Token::ExclamationMark |
+                Token::Plus |
+                Token::Minus |
+                Token::Keyword(Keyword::Ref) |
+                Token::Keyword(Keyword::Const) |
+                Token::Keyword(Keyword::Deref) |
+                // Structure
+                Token::LeftParenthesis |
+                // Value
+                Token::Number(_) |
+                Token::Char(_) |
+                Token::String(_) => {
                     let expr = self.parse_expr()?;
                     self.expect_token(Token::Semicolon)?;
                     self.advance();

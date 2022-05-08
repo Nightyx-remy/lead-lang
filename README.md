@@ -4,7 +4,11 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.2.2] (current)
+### Version [0.2.3] (current)
+- Reference, Const reference, Dereference
+- Comptime string type
+
+### Version [0.2.2] 
 - Variable Call
 - Variable Assignment
 - Unary BitNot operator

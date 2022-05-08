@@ -97,3 +97,15 @@ impl Position {
     }
 
 }
+
+impl<A: PartialEq> PartialEq<Self> for Positioned<A> {
+
+    fn eq(&self, other: &Self) -> bool {
+        return self.data.eq(&other.data);
+    }
+
+}
+
+impl<A: PartialEq> Eq for Positioned<A> {
+
+}

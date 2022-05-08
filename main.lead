@@ -2,5 +2,11 @@ let a = 33;
 let b = (a + 5) to u16;
 ~8;
 
-var value = 12;
+var value: u32 = 12;
 value = 9;
+
+var ref_value = ref value;
+var const_ref_value: const ref u32 = const ref value;
+var double_ref = ref ref_value;
+
+var comptime_str = "Hello";

@@ -66,6 +66,9 @@ impl Transpiler {
             Operator::Equal => Ok(operator.convert(COperator::Equal)),
             Operator::NotEqual => Ok(operator.convert(COperator::NotEqual)),
             Operator::Not => Ok(operator.convert(COperator::Not)),
+            Operator::Ref => Ok(operator.convert(COperator::Ref)),
+            Operator::ConstRef => Ok(operator.convert(COperator::Ref)),
+            Operator::Deref => Ok(operator.convert(COperator::Deref)),
         }
     }
 
@@ -121,7 +124,7 @@ impl Transpiler {
     fn transpile_type(&mut self, data_type: Positioned<DataType>) -> Result<Positioned<CType>, Positioned<TranspilerError>> {
         match data_type.data.clone() {
             DataType::ComptimeNumber => return Ok(data_type.convert(CType::Int)),
-            DataType::ComptimeString => todo!("need pointer"),
+            DataType::ComptimeString => return Ok(data_type.clone().convert(CType::ConstRef(Box::new(data_type.convert(CType::Char))))),
             DataType::ComptimeChar => return Ok(data_type.convert(CType::Char)),
             DataType::ComptimeBool => return Ok(data_type.convert(CType::Int)),
             DataType::U8 => return Ok(data_type.convert(CType::UnsignedByte)),
@@ -135,6 +138,8 @@ impl Transpiler {
             DataType::String => todo!("need Custom type and std lib"),
             DataType::Bool => return Ok(data_type.convert(CType::Int)),
             DataType::Char => return Ok(data_type.convert(CType::Char)),
+            DataType::Ref(inner) => return Ok(data_type.convert(CType::Ref(Box::new(self.transpile_type(*inner)?)))),
+            DataType::ConstRef(inner) => return Ok(data_type.convert(CType::ConstRef(Box::new(self.transpile_type(*inner)?)))),
         }
     }
 

@@ -45,6 +45,8 @@ impl Generator {
             COperator::Equal => "==".to_string(),
             COperator::NotEqual => "!=".to_string(),
             COperator::Not => '!'.to_string(),
+            COperator::Ref => '&'.to_string(),
+            COperator::Deref => '*'.to_string(),
         }
     }
 
@@ -100,6 +102,19 @@ impl Generator {
             CType::Long => "long".to_string(),
             CType::UnsignedLong => "unsigned long".to_string(),
             CType::Char => "char".to_string(),
+            CType::Ref(inner) => {
+                let mut str = String::new();
+                str.push_str(self.generate_type(*inner).as_str());
+                str.push('*');
+                str
+            }
+            CType::ConstRef(inner) => {
+                let mut str = String::new();
+                str.push_str("const ");
+                str.push_str(self.generate_type(*inner).as_str());
+                str.push('*');
+                str
+            }
         }
     }
 

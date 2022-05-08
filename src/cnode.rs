@@ -33,6 +33,8 @@ pub enum COperator {
     Equal,
     NotEqual,
     Not,
+    Ref,
+    Deref,
 }
 
 #[derive(Clone, Debug)]
@@ -53,4 +55,6 @@ pub enum CType {
     Long,
     UnsignedLong,
     Char,
+    Ref(Box<Positioned<CType>>),
+    ConstRef(Box<Positioned<CType>>),
 }

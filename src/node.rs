@@ -42,6 +42,9 @@ pub enum Operator {     // Precedence   Unary-Precedence
     Or,                 // 5
     Xor,                // 5
     Not,                // X            1
+    Ref,                // X            1
+    ConstRef,           // X            1
+    Deref,              // X            1
 }
 
 impl Operator {
@@ -72,6 +75,15 @@ impl Operator {
                     _ => None,
                 }
             },
+            Operator::Ref => Some(DataType::Ref(Box::new(Positioned::eof(value)))),
+            Operator::ConstRef => Some(DataType::ConstRef(Box::new(Positioned::eof(value)))),
+            Operator::Deref => {
+                match value {
+                    DataType::Ref(inner) => Some(inner.data.clone()),
+                    DataType::ConstRef(inner) => Some(inner.data.clone()),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
@@ -225,6 +237,9 @@ impl Operator {
             }
             Operator::Not => None,
             Operator::BitNot => None,
+            Operator::Ref => None,
+            Operator::ConstRef => None,
+            Operator::Deref => None,
         }
     }
 }
@@ -246,6 +261,8 @@ pub enum DataType {
     String,
     Bool,
     Char,
+    Ref(Box<Positioned<DataType>>),
+    ConstRef(Box<Positioned<DataType>>),
 }
 
 impl DataType {
