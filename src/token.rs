@@ -7,6 +7,7 @@ pub enum Token {
     Percent,
     Semicolon,
     Colon,
+    Comma,
     And,
     DoubleAnd,
     Pipe,
@@ -26,6 +27,8 @@ pub enum Token {
     ExclamationMarkEqual,
     LeftParenthesis,
     RightParenthesis,
+    LeftCurlyBracket,
+    RightCurlyBracket,
     Number(String),
     Char(String),
     String(String),
@@ -59,6 +62,8 @@ pub enum Keyword {
     To,
     Ref,
     Deref,
+    Fn,
+    Return
 }
 
 impl Keyword {
@@ -91,6 +96,8 @@ impl Keyword {
             "to" => Some(Keyword::To),
             "ref" => Some(Keyword::Ref),
             "deref" => Some(Keyword::Deref),
+            "fn" => Some(Keyword::Fn),
+            "return" => Some(Keyword::Return),
             _ => None
         }
     }

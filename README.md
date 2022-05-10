@@ -4,7 +4,15 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.2.3] (current)
+### Version [0.3.0] (current)
+- More operation check
+- Function Call
+- Function Definition
+- Return statement
+- Variable scope accessibility
+- Void type
+
+### Version [0.2.3] 
 - Reference, Const reference, Dereference
 - Comptime string type
 

@@ -1,5 +1,7 @@
 use crate::Positioned;
 
+// TODO: Better AST printing
+
 #[derive(Clone, Debug)]
 pub enum Node {
     BinaryOperation(Box<Positioned<Node>>, Positioned<Operator>, Box<Positioned<Node>>),
@@ -9,6 +11,9 @@ pub enum Node {
     VariableCall(String),
     VariableAssignment(Positioned<String>, Box<Positioned<Node>>),
     Casting(Box<Positioned<Node>>, Positioned<DataType>),
+    FunctionDefinition(Positioned<String>, Vec<(Positioned<String>, Positioned<DataType>)>, Option<Positioned<DataType>>, Vec<Positioned<Node>>),
+    FunctionCall(Positioned<String>, Vec<Positioned<Node>>),
+    Return(Box<Positioned<Node>>),
 }
 
 #[derive(Clone, Debug)]
@@ -54,24 +59,49 @@ impl Operator {
             Operator::Plus => {
                 match value {
                     DataType::ComptimeNumber => Some(DataType::ComptimeNumber),
+                    DataType::U8 => Some(DataType::U8),
+                    DataType::U16 => Some(DataType::U16),
+                    DataType::U32 => Some(DataType::U32),
+                    DataType::U64 => Some(DataType::U64),
+                    DataType::I8 => Some(DataType::I8),
+                    DataType::I16 => Some(DataType::I16),
+                    DataType::I32 => Some(DataType::I32),
+                    DataType::I64 => Some(DataType::I64),
                     _ => None,
                 }
             },
             Operator::Minus => {
                 match value {
                     DataType::ComptimeNumber => Some(DataType::ComptimeNumber),
+                    DataType::U8 => Some(DataType::U8),
+                    DataType::U16 => Some(DataType::U16),
+                    DataType::U32 => Some(DataType::U32),
+                    DataType::U64 => Some(DataType::U64),
+                    DataType::I8 => Some(DataType::I8),
+                    DataType::I16 => Some(DataType::I16),
+                    DataType::I32 => Some(DataType::I32),
+                    DataType::I64 => Some(DataType::I64),
                     _ => None,
                 }
             },
             Operator::Not => {
                 match value {
                     DataType::ComptimeBool => Some(DataType::ComptimeBool),
+                    DataType::Bool => Some(DataType::Bool),
                     _ => None,
                 }
             },
             Operator::BitNot => {
                 match value {
                     DataType::ComptimeNumber => Some(DataType::ComptimeNumber),
+                    DataType::U8 => Some(DataType::U8),
+                    DataType::U16 => Some(DataType::U16),
+                    DataType::U32 => Some(DataType::U32),
+                    DataType::U64 => Some(DataType::U64),
+                    DataType::I8 => Some(DataType::I8),
+                    DataType::I16 => Some(DataType::I16),
+                    DataType::I32 => Some(DataType::I32),
+                    DataType::I64 => Some(DataType::I64),
                     _ => None,
                 }
             },
@@ -89,26 +119,172 @@ impl Operator {
     }
 
     pub fn check_compatibility(&self, left: DataType, right: DataType) -> Option<DataType> {
+        // TODO: add all the new types
         return match self {
             Operator::Multiply => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::Divide => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::Remainder => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::Plus => {
+                // TODO: Char
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
@@ -117,51 +293,468 @@ impl Operator {
                     (DataType::ComptimeString, DataType::ComptimeString) |
                     (DataType::ComptimeChar, DataType::ComptimeString) |
                     (DataType::ComptimeString, DataType::ComptimeChar) => Some(DataType::ComptimeString),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::Minus => {
+                // TODO: Char
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
                     (DataType::ComptimeNumber, DataType::ComptimeChar) |
                     (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeChar),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::LeftShift => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::RightShift => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::BitAnd => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::BitOr => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::BitXor => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) => Some(DataType::ComptimeNumber),
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) => Some(DataType::U8),
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U16, DataType::U16) => Some(DataType::U16),
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U32, DataType::U32) => Some(DataType::U32),
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::U64, DataType::U64) => Some(DataType::U64),
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::I8) => Some(DataType::I8),
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I16, DataType::I16) => Some(DataType::I16),
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I32, DataType::I32) => Some(DataType::I32),
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::I64, DataType::I64) => Some(DataType::I64),
                     _ => None,
                 }
             }
             Operator::Greater => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) |
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U8, DataType::I8) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::I8, DataType::U8) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::U16) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U16, DataType::I8) |
+                    (DataType::U16, DataType::I16) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::I8, DataType::U16) |
+                    (DataType::I16, DataType::U16) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::U32) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U32, DataType::I8) |
+                    (DataType::U32, DataType::I16) |
+                    (DataType::U32, DataType::I32) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::I8, DataType::U32) |
+                    (DataType::I16, DataType::U32) |
+                    (DataType::I32, DataType::U32) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::U64, DataType::U64) |
+                    (DataType::U64, DataType::I8) |
+                    (DataType::U64, DataType::I16) |
+                    (DataType::U64, DataType::I32) |
+                    (DataType::U64, DataType::I64) |
+                    (DataType::I8, DataType::U64) |
+                    (DataType::I16, DataType::U64) |
+                    (DataType::I32, DataType::U64) |
+                    (DataType::I64, DataType::U64) |
+                    (DataType::I8, DataType::I8) |
+                    (DataType::I8, DataType::I16) |
+                    (DataType::I8, DataType::I32) |
+                    (DataType::I8, DataType::I64) |
+                    (DataType::I16, DataType::I8) |
+                    (DataType::I32, DataType::I8) |
+                    (DataType::I64, DataType::I8) |
+                    (DataType::I16, DataType::I16) |
+                    (DataType::I16, DataType::I32) |
+                    (DataType::I16, DataType::I64) |
+                    (DataType::I32, DataType::I16) |
+                    (DataType::I64, DataType::I16) |
+                    (DataType::I32, DataType::I32) |
+                    (DataType::I32, DataType::I64) |
+                    (DataType::I64, DataType::I32) |
+                    (DataType::I64, DataType::I64) |
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
                     (DataType::ComptimeNumber, DataType::ComptimeChar) |
                     (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeBool),
@@ -171,6 +764,86 @@ impl Operator {
             Operator::GreaterOrEqual => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) |
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U8, DataType::I8) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::I8, DataType::U8) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::U16) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U16, DataType::I8) |
+                    (DataType::U16, DataType::I16) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::I8, DataType::U16) |
+                    (DataType::I16, DataType::U16) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::U32) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U32, DataType::I8) |
+                    (DataType::U32, DataType::I16) |
+                    (DataType::U32, DataType::I32) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::I8, DataType::U32) |
+                    (DataType::I16, DataType::U32) |
+                    (DataType::I32, DataType::U32) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::U64, DataType::U64) |
+                    (DataType::U64, DataType::I8) |
+                    (DataType::U64, DataType::I16) |
+                    (DataType::U64, DataType::I32) |
+                    (DataType::U64, DataType::I64) |
+                    (DataType::I8, DataType::U64) |
+                    (DataType::I16, DataType::U64) |
+                    (DataType::I32, DataType::U64) |
+                    (DataType::I64, DataType::U64) |
+                    (DataType::I8, DataType::I8) |
+                    (DataType::I8, DataType::I16) |
+                    (DataType::I8, DataType::I32) |
+                    (DataType::I8, DataType::I64) |
+                    (DataType::I16, DataType::I8) |
+                    (DataType::I32, DataType::I8) |
+                    (DataType::I64, DataType::I8) |
+                    (DataType::I16, DataType::I16) |
+                    (DataType::I16, DataType::I32) |
+                    (DataType::I16, DataType::I64) |
+                    (DataType::I32, DataType::I16) |
+                    (DataType::I64, DataType::I16) |
+                    (DataType::I32, DataType::I32) |
+                    (DataType::I32, DataType::I64) |
+                    (DataType::I64, DataType::I32) |
+                    (DataType::I64, DataType::I64) |
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
                     (DataType::ComptimeNumber, DataType::ComptimeChar) |
                     (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeBool),
@@ -180,6 +853,86 @@ impl Operator {
             Operator::Less => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) |
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U8, DataType::I8) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::I8, DataType::U8) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::U16) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U16, DataType::I8) |
+                    (DataType::U16, DataType::I16) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::I8, DataType::U16) |
+                    (DataType::I16, DataType::U16) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::U32) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U32, DataType::I8) |
+                    (DataType::U32, DataType::I16) |
+                    (DataType::U32, DataType::I32) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::I8, DataType::U32) |
+                    (DataType::I16, DataType::U32) |
+                    (DataType::I32, DataType::U32) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::U64, DataType::U64) |
+                    (DataType::U64, DataType::I8) |
+                    (DataType::U64, DataType::I16) |
+                    (DataType::U64, DataType::I32) |
+                    (DataType::U64, DataType::I64) |
+                    (DataType::I8, DataType::U64) |
+                    (DataType::I16, DataType::U64) |
+                    (DataType::I32, DataType::U64) |
+                    (DataType::I64, DataType::U64) |
+                    (DataType::I8, DataType::I8) |
+                    (DataType::I8, DataType::I16) |
+                    (DataType::I8, DataType::I32) |
+                    (DataType::I8, DataType::I64) |
+                    (DataType::I16, DataType::I8) |
+                    (DataType::I32, DataType::I8) |
+                    (DataType::I64, DataType::I8) |
+                    (DataType::I16, DataType::I16) |
+                    (DataType::I16, DataType::I32) |
+                    (DataType::I16, DataType::I64) |
+                    (DataType::I32, DataType::I16) |
+                    (DataType::I64, DataType::I16) |
+                    (DataType::I32, DataType::I32) |
+                    (DataType::I32, DataType::I64) |
+                    (DataType::I64, DataType::I32) |
+                    (DataType::I64, DataType::I64) |
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
                     (DataType::ComptimeNumber, DataType::ComptimeChar) |
                     (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeBool),
@@ -189,6 +942,86 @@ impl Operator {
             Operator::LessOrEqual => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) |
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U8, DataType::I8) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::I8, DataType::U8) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::U16) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U16, DataType::I8) |
+                    (DataType::U16, DataType::I16) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::I8, DataType::U16) |
+                    (DataType::I16, DataType::U16) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::U32) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U32, DataType::I8) |
+                    (DataType::U32, DataType::I16) |
+                    (DataType::U32, DataType::I32) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::I8, DataType::U32) |
+                    (DataType::I16, DataType::U32) |
+                    (DataType::I32, DataType::U32) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::U64, DataType::U64) |
+                    (DataType::U64, DataType::I8) |
+                    (DataType::U64, DataType::I16) |
+                    (DataType::U64, DataType::I32) |
+                    (DataType::U64, DataType::I64) |
+                    (DataType::I8, DataType::U64) |
+                    (DataType::I16, DataType::U64) |
+                    (DataType::I32, DataType::U64) |
+                    (DataType::I64, DataType::U64) |
+                    (DataType::I8, DataType::I8) |
+                    (DataType::I8, DataType::I16) |
+                    (DataType::I8, DataType::I32) |
+                    (DataType::I8, DataType::I64) |
+                    (DataType::I16, DataType::I8) |
+                    (DataType::I32, DataType::I8) |
+                    (DataType::I64, DataType::I8) |
+                    (DataType::I16, DataType::I16) |
+                    (DataType::I16, DataType::I32) |
+                    (DataType::I16, DataType::I64) |
+                    (DataType::I32, DataType::I16) |
+                    (DataType::I64, DataType::I16) |
+                    (DataType::I32, DataType::I32) |
+                    (DataType::I32, DataType::I64) |
+                    (DataType::I64, DataType::I32) |
+                    (DataType::I64, DataType::I64) |
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
                     (DataType::ComptimeNumber, DataType::ComptimeChar) |
                     (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeBool),
@@ -198,24 +1031,181 @@ impl Operator {
             Operator::Equal => {
                 match (left, right) {
                     (DataType::ComptimeNumber, DataType::ComptimeNumber) |
+                    (DataType::ComptimeNumber, DataType::U8) |
+                    (DataType::ComptimeNumber, DataType::U16) |
+                    (DataType::ComptimeNumber, DataType::U32) |
+                    (DataType::ComptimeNumber, DataType::U64) |
+                    (DataType::ComptimeNumber, DataType::I8) |
+                    (DataType::ComptimeNumber, DataType::I16) |
+                    (DataType::ComptimeNumber, DataType::I32) |
+                    (DataType::ComptimeNumber, DataType::I64) |
+                    (DataType::U8, DataType::ComptimeNumber) |
+                    (DataType::U16, DataType::ComptimeNumber) |
+                    (DataType::U32, DataType::ComptimeNumber) |
+                    (DataType::U64, DataType::ComptimeNumber) |
+                    (DataType::I8, DataType::ComptimeNumber) |
+                    (DataType::I16, DataType::ComptimeNumber) |
+                    (DataType::I32, DataType::ComptimeNumber) |
+                    (DataType::I64, DataType::ComptimeNumber) |
+                    (DataType::U8, DataType::U8) |
+                    (DataType::U8, DataType::U16) |
+                    (DataType::U8, DataType::U32) |
+                    (DataType::U8, DataType::U64) |
+                    (DataType::U8, DataType::I8) |
+                    (DataType::U8, DataType::I16) |
+                    (DataType::U8, DataType::I32) |
+                    (DataType::U8, DataType::I64) |
+                    (DataType::U16, DataType::U8) |
+                    (DataType::U32, DataType::U8) |
+                    (DataType::U64, DataType::U8) |
+                    (DataType::I8, DataType::U8) |
+                    (DataType::I16, DataType::U8) |
+                    (DataType::I32, DataType::U8) |
+                    (DataType::I64, DataType::U8) |
+                    (DataType::U16, DataType::U16) |
+                    (DataType::U16, DataType::U32) |
+                    (DataType::U16, DataType::U64) |
+                    (DataType::U16, DataType::I8) |
+                    (DataType::U16, DataType::I16) |
+                    (DataType::U16, DataType::I32) |
+                    (DataType::U16, DataType::I64) |
+                    (DataType::U32, DataType::U16) |
+                    (DataType::U64, DataType::U16) |
+                    (DataType::I8, DataType::U16) |
+                    (DataType::I16, DataType::U16) |
+                    (DataType::I32, DataType::U16) |
+                    (DataType::I64, DataType::U16) |
+                    (DataType::U32, DataType::U32) |
+                    (DataType::U32, DataType::U64) |
+                    (DataType::U32, DataType::I8) |
+                    (DataType::U32, DataType::I16) |
+                    (DataType::U32, DataType::I32) |
+                    (DataType::U32, DataType::I64) |
+                    (DataType::U64, DataType::U32) |
+                    (DataType::I8, DataType::U32) |
+                    (DataType::I16, DataType::U32) |
+                    (DataType::I32, DataType::U32) |
+                    (DataType::I64, DataType::U32) |
+                    (DataType::U64, DataType::U64) |
+                    (DataType::U64, DataType::I8) |
+                    (DataType::U64, DataType::I16) |
+                    (DataType::U64, DataType::I32) |
+                    (DataType::U64, DataType::I64) |
+                    (DataType::I8, DataType::U64) |
+                    (DataType::I16, DataType::U64) |
+                    (DataType::I32, DataType::U64) |
+                    (DataType::I64, DataType::U64) |
+                    (DataType::I8, DataType::I8) |
+                    (DataType::I8, DataType::I16) |
+                    (DataType::I8, DataType::I32) |
+                    (DataType::I8, DataType::I64) |
+                    (DataType::I16, DataType::I8) |
+                    (DataType::I32, DataType::I8) |
+                    (DataType::I64, DataType::I8) |
+                    (DataType::I16, DataType::I16) |
+                    (DataType::I16, DataType::I32) |
+                    (DataType::I16, DataType::I64) |
+                    (DataType::I32, DataType::I16) |
+                    (DataType::I64, DataType::I16) |
+                    (DataType::I32, DataType::I32) |
+                    (DataType::I32, DataType::I64) |
+                    (DataType::I64, DataType::I32) |
+                    (DataType::I64, DataType::I64) |
                     (DataType::ComptimeChar, DataType::ComptimeNumber) |
                     (DataType::ComptimeNumber, DataType::ComptimeChar) |
-                    (DataType::ComptimeChar, DataType::ComptimeChar) |
-                    (DataType::ComptimeString, DataType::ComptimeString) |
-                    (DataType::ComptimeBool, DataType::ComptimeBool) => Some(DataType::ComptimeBool),
+                    (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeBool),
                     _ => None,
                 }
             }
-            Operator::NotEqual => {
-                match (left, right) {
-                    (DataType::ComptimeNumber, DataType::ComptimeNumber) |
-                    (DataType::ComptimeChar, DataType::ComptimeNumber) |
-                    (DataType::ComptimeNumber, DataType::ComptimeChar) |
-                    (DataType::ComptimeChar, DataType::ComptimeChar) |
-                    (DataType::ComptimeString, DataType::ComptimeString) |
-                    (DataType::ComptimeBool, DataType::ComptimeBool) => Some(DataType::ComptimeBool),
-                    _ => None,
-                }
+            Operator::NotEqual => {match (left, right) {
+                (DataType::ComptimeNumber, DataType::ComptimeNumber) |
+                (DataType::ComptimeNumber, DataType::U8) |
+                (DataType::ComptimeNumber, DataType::U16) |
+                (DataType::ComptimeNumber, DataType::U32) |
+                (DataType::ComptimeNumber, DataType::U64) |
+                (DataType::ComptimeNumber, DataType::I8) |
+                (DataType::ComptimeNumber, DataType::I16) |
+                (DataType::ComptimeNumber, DataType::I32) |
+                (DataType::ComptimeNumber, DataType::I64) |
+                (DataType::U8, DataType::ComptimeNumber) |
+                (DataType::U16, DataType::ComptimeNumber) |
+                (DataType::U32, DataType::ComptimeNumber) |
+                (DataType::U64, DataType::ComptimeNumber) |
+                (DataType::I8, DataType::ComptimeNumber) |
+                (DataType::I16, DataType::ComptimeNumber) |
+                (DataType::I32, DataType::ComptimeNumber) |
+                (DataType::I64, DataType::ComptimeNumber) |
+                (DataType::U8, DataType::U8) |
+                (DataType::U8, DataType::U16) |
+                (DataType::U8, DataType::U32) |
+                (DataType::U8, DataType::U64) |
+                (DataType::U8, DataType::I8) |
+                (DataType::U8, DataType::I16) |
+                (DataType::U8, DataType::I32) |
+                (DataType::U8, DataType::I64) |
+                (DataType::U16, DataType::U8) |
+                (DataType::U32, DataType::U8) |
+                (DataType::U64, DataType::U8) |
+                (DataType::I8, DataType::U8) |
+                (DataType::I16, DataType::U8) |
+                (DataType::I32, DataType::U8) |
+                (DataType::I64, DataType::U8) |
+                (DataType::U16, DataType::U16) |
+                (DataType::U16, DataType::U32) |
+                (DataType::U16, DataType::U64) |
+                (DataType::U16, DataType::I8) |
+                (DataType::U16, DataType::I16) |
+                (DataType::U16, DataType::I32) |
+                (DataType::U16, DataType::I64) |
+                (DataType::U32, DataType::U16) |
+                (DataType::U64, DataType::U16) |
+                (DataType::I8, DataType::U16) |
+                (DataType::I16, DataType::U16) |
+                (DataType::I32, DataType::U16) |
+                (DataType::I64, DataType::U16) |
+                (DataType::U32, DataType::U32) |
+                (DataType::U32, DataType::U64) |
+                (DataType::U32, DataType::I8) |
+                (DataType::U32, DataType::I16) |
+                (DataType::U32, DataType::I32) |
+                (DataType::U32, DataType::I64) |
+                (DataType::U64, DataType::U32) |
+                (DataType::I8, DataType::U32) |
+                (DataType::I16, DataType::U32) |
+                (DataType::I32, DataType::U32) |
+                (DataType::I64, DataType::U32) |
+                (DataType::U64, DataType::U64) |
+                (DataType::U64, DataType::I8) |
+                (DataType::U64, DataType::I16) |
+                (DataType::U64, DataType::I32) |
+                (DataType::U64, DataType::I64) |
+                (DataType::I8, DataType::U64) |
+                (DataType::I16, DataType::U64) |
+                (DataType::I32, DataType::U64) |
+                (DataType::I64, DataType::U64) |
+                (DataType::I8, DataType::I8) |
+                (DataType::I8, DataType::I16) |
+                (DataType::I8, DataType::I32) |
+                (DataType::I8, DataType::I64) |
+                (DataType::I16, DataType::I8) |
+                (DataType::I32, DataType::I8) |
+                (DataType::I64, DataType::I8) |
+                (DataType::I16, DataType::I16) |
+                (DataType::I16, DataType::I32) |
+                (DataType::I16, DataType::I64) |
+                (DataType::I32, DataType::I16) |
+                (DataType::I64, DataType::I16) |
+                (DataType::I32, DataType::I32) |
+                (DataType::I32, DataType::I64) |
+                (DataType::I64, DataType::I32) |
+                (DataType::I64, DataType::I64) |
+                (DataType::ComptimeChar, DataType::ComptimeNumber) |
+                (DataType::ComptimeNumber, DataType::ComptimeChar) |
+                (DataType::ComptimeBool, DataType::ComptimeBool) |
+                (DataType::ComptimeString, DataType::ComptimeString) |
+                (DataType::ComptimeChar, DataType::ComptimeChar) => Some(DataType::ComptimeBool),
+                _ => None,
+            }
             }
             Operator::And => {
                 match (left, right) {
@@ -263,6 +1253,7 @@ pub enum DataType {
     Char,
     Ref(Box<Positioned<DataType>>),
     ConstRef(Box<Positioned<DataType>>),
+    Void,
 }
 
 impl DataType {
@@ -338,5 +1329,6 @@ impl From<ValueNode> for DataType {
 pub enum VarType {
     Var,
     Let,
-    Const
+    Const,
+    FunctionParam,
 }

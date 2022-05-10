@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use crate::{Positioned, Token};
 use crate::either::Either;
 use crate::node::{DataType, Node, Operator, ValueNode, VarType};
+use crate::position::Position;
 use crate::token::Keyword;
 
 pub enum ParserError {
@@ -69,8 +70,8 @@ impl Parser {
         return self.tokens.get(self.index).cloned();
     }
 
-    fn nth(&self, offset: usize) -> Option<Positioned<Token>> {
-        return self.tokens.get(self.index + offset).cloned();
+    fn nth(&self, offset: i32) -> Option<Positioned<Token>> {
+        return self.tokens.get((self.index as i32 + offset) as usize).cloned();
     }
 
     fn advance(&mut self) {
@@ -100,6 +101,31 @@ impl Parser {
         }
     }
 
+    fn parse_function_call(&mut self, identifier: Positioned<String>) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        let start = identifier.start.clone();
+        self.advance();
+        self.expect_token(Token::LeftParenthesis)?;
+        self.advance();
+        let mut params = vec![];
+        let end;
+        loop {
+            let current = self.expect_current(vec![Either::A(Token::RightParenthesis)])?;
+            if current.data == Token::RightParenthesis {
+                end = current.end.clone();
+                break;
+            } else {
+                if params.len() != 0 {
+                    self.expect_token(Token::Comma);
+                    self.advance();
+                }
+                let expr = self.parse_expr()?;
+                params.push(expr);
+            }
+        }
+        self.advance();
+        return Ok(Positioned::new(Node::FunctionCall(identifier, params), start, end));
+    }
+
     fn parse_value(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
         return if let Some(current) = self.current() {
             match current.data.clone() {
@@ -119,7 +145,16 @@ impl Parser {
                     self.expect_token(Token::RightParenthesis)?;
                     return Ok(expr);
                 }
-                Token::Identifier(id) => return Ok(current.convert(Node::VariableCall(id))),
+                Token::Identifier(id) => {
+                    if let Some(next) = self.nth(1) {
+                        if next.data == Token::LeftParenthesis {
+                            // Function Call
+                            return self.parse_function_call(current.clone().convert(id));
+                        }
+                    }
+                    // Variable Call
+                    return Ok(current.convert(Node::VariableCall(id)))
+                },
                 _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Value".to_string())])))
             }
         } else {
@@ -452,6 +487,80 @@ impl Parser {
         }
     }
 
+    fn parse_function_definition(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        self.advance();
+
+        let mut current = self.expect_current(vec![Either::B("Identifier".to_string())])?;
+        return if let Token::Identifier(id) = current.data.clone() {
+            let identifier = current.convert(id);
+            self.advance();
+
+            // Parameters
+            self.expect_token(Token::LeftParenthesis);
+            self.advance();
+            let mut params = vec![];
+            loop {
+                current = self.expect_current(vec![Either::A(Token::RightParenthesis)])?;
+                if current.data.clone() == Token::RightParenthesis {
+                    break;
+                } else {
+                    if params.len() != 0 {
+                        self.expect_token(Token::Comma)?;
+                        self.advance();
+                        current = self.expect_current(vec![Either::B("identifier".to_string())])?;
+                    }
+                    if let Token::Identifier(param_id) = current.data.clone() {
+                        let param_identifier = current.convert(param_id);
+                        self.advance();
+                        self.expect_token(Token::Colon);
+                        self.advance();
+                        let data_type = self.parse_type()?;
+                        self.advance();
+                        params.push((param_identifier, data_type));
+                    } else {
+                        return Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])));
+                    }
+                }
+            }
+            self.advance();
+
+            // Return type
+            let mut return_type = None;
+            current = self.expect_current(vec![Either::A(Token::LeftCurlyBracket)])?;
+            if current.data == Token::Colon {
+                self.advance();
+                return_type = Some(self.parse_type()?);
+                self.advance();
+            }
+
+            // Body
+            self.expect_token(Token::LeftCurlyBracket);
+            self.advance();
+            let mut body = vec![];
+            loop {
+                current = self.expect_current(vec![Either::A(Token::RightCurlyBracket)])?;
+                if current.data.clone() == Token::RightCurlyBracket {
+                    break;
+                } else {
+                    body.push(self.parse_current()?);
+                }
+            }
+            self.advance();
+
+            let end = self.nth(-1).unwrap().end.clone();
+            Ok(Positioned::new(Node::FunctionDefinition(identifier, params, return_type, body), start, end))
+        } else {
+            Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])))
+        }
+    }
+
+    fn parse_return(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        self.advance();
+        let expr = self.parse_expr()?;
+        let end = expr.end.clone();
+        return Ok(Positioned::new(Node::Return(Box::new(expr)), start, end));
+    }
+
     fn parse_keyword(&mut self, keyword: Positioned<Keyword>) -> Result<Positioned<Node>, Positioned<ParserError>> {
         return match keyword.data.clone() {
             Keyword::True | Keyword::False => {
@@ -478,6 +587,13 @@ impl Parser {
                 self.advance();
                 Ok(expr)
             }
+            Keyword::Fn => self.parse_function_definition(keyword.start.clone()),
+            Keyword::Return => {
+                let node = self.parse_return(keyword.start.clone())?;
+                self.expect_token(Token::Semicolon)?;
+                self.advance();
+                Ok(node)
+            },
             kw => Err(keyword.convert(ParserError::UnexpectedToken(Token::Keyword(kw), vec![]))),
         }
     }

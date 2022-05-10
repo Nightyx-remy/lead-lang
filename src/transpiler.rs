@@ -140,6 +140,7 @@ impl Transpiler {
             DataType::Char => return Ok(data_type.convert(CType::Char)),
             DataType::Ref(inner) => return Ok(data_type.convert(CType::Ref(Box::new(self.transpile_type(*inner)?)))),
             DataType::ConstRef(inner) => return Ok(data_type.convert(CType::ConstRef(Box::new(self.transpile_type(*inner)?)))),
+            DataType::Void => return Ok(data_type.convert(CType::Void)),
         }
     }
 
@@ -151,6 +152,7 @@ impl Transpiler {
             VarType::Var => false,
             VarType::Let => value.is_some(),
             VarType::Const => true,
+            VarType::FunctionParam => panic!("Should not happen!"),
         };
 
         let c_value = if let Some(value) = value {
@@ -181,7 +183,38 @@ impl Transpiler {
         return Ok(Positioned::new(CNode::VariableAssignment(id.clone(), Box::new(c_value)), start, end));
     }
 
+    fn transpile_function_definition(&mut self, position: Positioned<()>, name: Positioned<String>, params: Vec<(Positioned<String>, Positioned<DataType>)>, return_type: Option<Positioned<DataType>>, body: Vec<Positioned<Node>>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let c_type = self.transpile_type(return_type.unwrap_or(name.convert(DataType::Void)))?;
+
+        let mut c_params = Vec::new();
+        for (param_name, param_type) in params {
+            let c_param_type = self.transpile_type(param_type)?;
+            c_params.push((c_param_type, param_name.clone()));
+        }
+
+        let mut c_body = Vec::new();
+        for node in body {
+            c_body.push(self.transpile_node(node)?);
+        }
+
+        Ok(position.convert(CNode::FunctionDefinition(c_type, name.clone(), c_params, c_body)))
+    }
+
+    fn transpile_return(&mut self, position: Positioned<()>, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        Ok(position.convert(CNode::Return(Box::new(self.transpile_node(node)?))))
+    }
+
+    fn transpile_function_call(&mut self, position: Positioned<()>, name: Positioned<String>, params: Vec<Positioned<Node>>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let mut r_params = Vec::new();
+        for param in params {
+            r_params.push(self.transpile_node(param)?);
+        }
+
+        Ok(position.convert(CNode::FunctionCall(name, r_params)))
+    }
+
     fn transpile_node(&mut self, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        let position = node.convert(());
         return match node.data.clone() {
             Node::BinaryOperation(left, operator, right) => self.transpile_bin_op(*left, operator, *right),
             Node::UnaryOperation(operator, value) => self.transpile_unary_op(operator, *value),
@@ -190,6 +223,9 @@ impl Transpiler {
             Node::Casting(left, right) => self.translate_casting(*left, right),
             Node::VariableCall(id) => self.transpile_variable_call(node.convert(id)),
             Node::VariableAssignment(id, value) => self.transpile_variable_assignment(id, *value),
+            Node::FunctionDefinition(name, params, return_type, body) => self.transpile_function_definition(position, name, params, return_type, body),
+            Node::Return(node) => self.transpile_return(position, *node),
+            Node::FunctionCall(name, params) => self.transpile_function_call(position, name, params),
         }
     }
 

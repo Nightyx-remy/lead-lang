@@ -115,6 +115,7 @@ impl Generator {
                 str.push('*');
                 str
             }
+            CType::Void => "void".to_string(),
         }
     }
 
@@ -156,6 +157,57 @@ impl Generator {
         return str;
     }
 
+    fn generate_function_definition(&mut self, return_type: Positioned<CType>, name: Positioned<String>, params: Vec<(Positioned<CType>, Positioned<String>)>, body: Vec<Positioned<CNode>>) -> String {
+        let mut str = String::new();
+        str.push_str(self.generate_type(return_type).as_str());
+        str.push_str(" ");
+        str.push_str(name.data.as_str());
+        str.push_str("(");
+        let mut first = true;
+        for (param_type, param_name) in params.iter() {
+            if !first {
+                str.push_str(", ");
+            }
+            str.push_str(self.generate_type(param_type.clone()).as_str());
+            str.push_str(" ");
+            str.push_str(param_name.data.as_str());
+            first = false;
+        }
+        str.push_str(") {\n");
+        for node in body {
+            for line in self.generate_node(node).lines() {
+                str.push_str("\t");
+                str.push_str(line);
+                str.push_str(";\n");
+            }
+        }
+        str.push_str("}");
+        str
+    }
+
+    fn generate_function_call(&mut self, name: Positioned<String>, params: Vec<Positioned<CNode>>) -> String {
+        let mut str = String::new();
+        str.push_str(name.data.as_str());
+        str.push_str("(");
+        let mut first = true;
+        for param in params.iter() {
+            if !first {
+                str.push_str(", ");
+            }
+            str.push_str(self.generate_node(param.clone()).as_str());
+            first = false;
+        }
+        str.push_str(")");
+        str
+    }
+
+    fn generate_return(&mut self, node: Positioned<CNode>) -> String {
+        let mut str = String::new();
+        str.push_str("return ");
+        str.push_str(self.generate_node(node).as_str());
+        str
+    }
+
     fn generate_node(&mut self, node: Positioned<CNode>) -> String {
         return match node.data.clone() {
             CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
@@ -165,6 +217,9 @@ impl Generator {
             CNode::Casting(left, right) => self.generate_cast(*left, right),
             CNode::VariableCall(id) => self.generate_variable_call(node.convert(id)),
             CNode::VariableAssignment(id, value) => self.generate_variable_assignment(id, *value),
+            CNode::FunctionDefinition(return_type, name, params, body) => self.generate_function_definition(return_type, name, params, body),
+            CNode::FunctionCall(name, params) => self.generate_function_call(name, params),
+            CNode::Return(node) => self.generate_return(*node),
         }
     }
 
