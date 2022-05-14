@@ -122,7 +122,6 @@ impl Parser {
                 params.push(expr);
             }
         }
-        self.advance();
         return Ok(Positioned::new(Node::FunctionCall(identifier, params), start, end));
     }
 
@@ -386,6 +385,7 @@ impl Parser {
             Token::Keyword(Keyword::Str) => Ok(current.convert(DataType::String)),
             Token::Keyword(Keyword::Bool) => Ok(current.convert(DataType::Bool)),
             Token::Keyword(Keyword::Char) => Ok(current.convert(DataType::Char)),
+            Token::Keyword(Keyword::Void) => Ok(current.convert(DataType::Void)),
             Token::Keyword(Keyword::Comptime) => {
                 self.advance();
                 current = self.expect_current(vec![Either::B("type".to_string())])?;
@@ -607,7 +607,7 @@ impl Parser {
                     let value = self.parse_expr()?;
                     let start = id.start.clone();
                     let end = value.end.clone();
-                    let node = Positioned::new(Node::VariableAssignment(id.clone(), Box::new(value)), start, end);
+                    let node = Positioned::new(Node::VariableAssignment(false, id.clone(), Box::new(value)), start, end);
                     self.expect_token(Token::Semicolon)?;
                     self.advance();
                     return Ok(node);
@@ -615,7 +615,10 @@ impl Parser {
                 _ => {}
             }
         }
-        return self.parse_expr();
+        let expr = self.parse_expr()?;
+        self.expect_token(Token::Semicolon)?;
+        self.advance();
+        return Ok(expr);
     }
 
     fn parse_extern(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
@@ -633,6 +636,7 @@ impl Parser {
             self.advance();
             let mut params = vec![];
             let mut end;
+            let mut list = false;
             loop {
                 current = self.expect_current(vec![Either::A(Token::RightParenthesis)])?;
                 if current.data.clone() == Token::RightParenthesis {
@@ -652,6 +656,12 @@ impl Parser {
                         let data_type = self.parse_type()?;
                         self.advance();
                         params.push((param_identifier, data_type));
+                    } else if current.data.clone() == Token::TripleDot {
+                        list = true;
+                        self.advance();
+                        self.expect_token(Token::RightParenthesis);
+                        end = self.current().unwrap().end;
+                        break;
                     } else {
                         return Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])));
                     }
@@ -671,7 +681,7 @@ impl Parser {
 
             self.expect_token(Token::Semicolon)?;
             self.advance();
-            Ok(Positioned::new(Node::CompilerInstruction(CompilerInstruction::ExternFn(identifier, params, return_type)), start, end))
+            Ok(Positioned::new(Node::CompilerInstruction(CompilerInstruction::ExternFn(identifier, params, list, return_type)), start, end))
         } else {
             Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])))
         }
@@ -696,6 +706,25 @@ impl Parser {
         }
     }
 
+    fn parse_include(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        self.advance();
+        self.expect_token(Token::LeftParenthesis)?;
+        self.advance();
+        let current = self.expect_current(vec![Either::B("identifier".to_string())])?;
+        return if let Token::Identifier(id) = current.data.clone() {
+            let identifier = current.convert(id);
+            self.advance();
+            self.expect_token(Token::RightParenthesis)?;
+            let end = self.current().unwrap().end.clone();
+            self.advance();
+            self.expect_token(Token::Semicolon)?;
+            self.advance();
+            Ok(Positioned::new(Node::CompilerInstruction(CompilerInstruction::Include(identifier)), start, end))
+        } else {
+            Err(current.convert(ParserError::UnexpectedToken(current.data.clone(), vec![Either::B("identifier".to_string())])))
+        }
+    }
+
     fn parse_compiler_instruction(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
         self.advance();
         let current = self.expect_current(vec![Either::B("compiler instruction".to_string())])?;
@@ -703,6 +732,7 @@ impl Parser {
             match keyword {
                 Keyword::Extern => self.parse_extern(start),
                 Keyword::Import => self.parse_import(start),
+                Keyword::Include => self.parse_include(start),
                 _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("compiler instruction".to_string())])))
             }
         } else {

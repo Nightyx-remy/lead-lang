@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::process::Command;
 use crate::generator::Generator;
 use crate::lexer::Lexer;
 use crate::node::Node;
@@ -78,22 +79,23 @@ fn main() {
 
                                     // Generator
                                     let mut generator = Generator::new(ast);
-                                    println!("{}", generator.generate());
+                                    let res = generator.generate();
+                                    println!("{}", res);
                                 }
                                 Err(err) => {
-                                    println!("[Transpiler Error]: {}", err.data);
+                                    println!("[Transpiler Error]: {} at {}:{}", err.data, err.start.line, err.start.column);
                                     err.show_on_text(str);
                                 }
                             }
                         }
                         Err(err) => {
-                            println!("[Optimizer Error]: {}", err.data);
+                            println!("[Optimizer Error]: {} at {}:{}", err.data, err.start.line, err.start.column);
                             err.show_on_text(str);
                         }
                     }
                 }
                 Err(err) => {
-                    println!("[Parser Error]: {}", err.data);
+                    println!("[Parser Error]: {} at {}:{}", err.data, err.start.line, err.start.column);
                     err.show_on_text(str);
                 }
             }

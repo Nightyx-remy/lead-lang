@@ -4,7 +4,13 @@ Here is my attempt to make a transpiler from Lead (a language I created) to C.
 
 ## Versions History
 
-### Version [0.3.1] (current)
+### Version [0.3.2] (current)
+- Include
+- Parameter list for extern function
+- Fix void type
+- Reference assignment
+
+### Version [0.3.1] 
 - Comments (Single line & multi line)
 - Check for main function
 - Load extern functions

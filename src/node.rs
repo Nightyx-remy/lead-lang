@@ -9,7 +9,7 @@ pub enum Node {
     Value(ValueNode),
     VariableDefinition(Positioned<VarType>, Positioned<String>, Option<Positioned<DataType>>, Option<Box<Positioned<Node>>>),
     VariableCall(String),
-    VariableAssignment(Positioned<String>, Box<Positioned<Node>>),
+    VariableAssignment(bool, Positioned<String>, Box<Positioned<Node>>),
     Casting(Box<Positioned<Node>>, Positioned<DataType>),
     FunctionDefinition(Positioned<String>, Vec<(Positioned<String>, Positioned<DataType>)>, Option<Positioned<DataType>>, Vec<Positioned<Node>>),
     FunctionCall(Positioned<String>, Vec<Positioned<Node>>),
@@ -19,8 +19,9 @@ pub enum Node {
 
 #[derive(Clone, Debug)]
 pub enum CompilerInstruction {
-    ExternFn(Positioned<String>, Vec<(Positioned<String>, Positioned<DataType>)>, Option<Positioned<DataType>>),
+    ExternFn(Positioned<String>, Vec<(Positioned<String>, Positioned<DataType>)>, bool, Option<Positioned<DataType>>),
     Import(Positioned<String>),
+    Include(Positioned<String>),
 }
 
 #[derive(Clone, Debug)]
@@ -1293,6 +1294,9 @@ impl DataType {
             (DataType::ComptimeString, DataType::String) => true,
             (DataType::ComptimeBool, DataType::Bool) => true,
             (DataType::ComptimeChar, DataType::Char) => true,
+            (DataType::Ref(inner1), DataType::Ref(inner2)) => {
+                return inner1.data == inner2.data;
+            }
             _ => false,
         }
     }
@@ -1315,6 +1319,8 @@ impl DataType {
             (DataType::ComptimeString, DataType::String) => true,
             (DataType::ComptimeBool, DataType::Bool) => true,
             (DataType::ComptimeChar, DataType::Char) => true,
+            (DataType::Ref(inner), _) if inner.data == DataType::Void => true,
+            (_, DataType::Ref(inner)) if inner.data == DataType::Void => true,
             _ => false,
         }
     }

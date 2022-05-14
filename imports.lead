@@ -1,5 +1,9 @@
-@extern fn printf(msg: comptime str);
+@include(stdio);
 
-fn print_hello() {
-    printf("Hello!\n");
-}
+@extern fn printf(msg: comptime str, ...);
+
+@include(stdlib);
+
+@extern fn malloc(size: u32): &void;
+@extern fn realloc(ptr: &void, size: u32): &void;
+@extern fn free(ptr: &void);

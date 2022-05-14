@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
+use std::process::exit;
 use crate::{Lexer, Node, Parser, Positioned};
 use crate::node::{CompilerInstruction, DataType, Operator, VarType};
 
@@ -96,6 +97,7 @@ pub struct FunctionData {
     name: Positioned<String>,
     return_type: Positioned<DataType>,
     params: Vec<(Positioned<String>, Positioned<DataType>)>,
+    list: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -170,10 +172,15 @@ impl Scope {
                 }
                 None
             },
-            Scope::Function { parameters, parent, .. } => {
+            Scope::Function { parameters, variables, parent, .. } => {
                 for param in parameters.iter_mut() {
                     if param.name.data == name {
                         return Some(param);
+                    }
+                }
+                for variable in variables.iter_mut() {
+                    if variable.name.data == name {
+                        return Some(variable);
                     }
                 }
                 parent.get_variable(name)
@@ -202,8 +209,6 @@ pub struct Optimizer {
     ast: Vec<Positioned<Node>>,
     index: usize,
     nodes: Vec<Positioned<Node>>,
-    variables: Vec<VariableData>,
-    functions: Vec<FunctionData>,
     scope: Scope,
 }
 
@@ -215,8 +220,6 @@ impl Optimizer {
             ast,
             index: 0,
             nodes: vec![],
-            variables: vec![],
-            functions: vec![],
             scope: Scope::Root {
                 functions: vec![],
                 variables: vec![]
@@ -331,9 +334,17 @@ impl Optimizer {
                 (VarType::Var, _) |
                 (VarType::Let, false) => {
                     if !value_result.0.clone().unwrap().is_convertible(variable.data_type.data.clone()) {
-                        Err(Positioned::new(OptimizerError::IncompatibleTypes(value_result.0.unwrap(), variable.data_type.data.clone()), id.start.clone(), value.end.clone()))
+                        if let DataType::Ref(inner) = variable.data_type.data.clone() {
+                            if !value_result.0.clone().unwrap().is_convertible(inner.data) {
+                                Err(Positioned::new(OptimizerError::IncompatibleTypes(value_result.0.unwrap(), variable.data_type.data.clone()), id.start.clone(), value.end.clone()))
+                            } else {
+                                Ok((None, Some(Positioned::new(Node::VariableAssignment(true, id.clone(), Box::new(value_result.1.unwrap())), id.start.clone(), value.end.clone()))))
+                            }
+                        } else {
+                            Err(Positioned::new(OptimizerError::IncompatibleTypes(value_result.0.unwrap(), variable.data_type.data.clone()), id.start.clone(), value.end.clone()))
+                        }
                     } else {
-                        Ok((None, Some(Positioned::new(Node::VariableAssignment(id.clone(), Box::new(value_result.1.unwrap())), id.start.clone(), value.end.clone()))))
+                        Ok((None, Some(Positioned::new(Node::VariableAssignment(false, id.clone(), Box::new(value_result.1.unwrap())), id.start.clone(), value.end.clone()))))
                     }
                 }
                 _ => Err(Positioned::new(OptimizerError::VariableCannotBeModified(id.data.clone()), id.start.clone(), value.end.clone())),
@@ -348,7 +359,8 @@ impl Optimizer {
         let function_data = FunctionData {
             name: name.clone(),
             return_type: return_type.clone().unwrap_or(name.clone().convert(DataType::Void)),
-            params: params.clone()
+            params: params.clone(),
+            list: false,
         };
         self.scope.add_function(position.convert(function_data));
 
@@ -418,6 +430,9 @@ impl Optimizer {
                     } else {
                         return Err(Positioned::new(OptimizerError::IncompatibleTypes(result.0.unwrap(), p_type.data), p_name.start, p_type.end));
                     }
+                } else if function.list {
+                    let result = self.optimize_node(v_param.clone())?;
+                    r_params.push(result.1.unwrap());
                 } else {
                     return Err(position.convert(OptimizerError::IncorrectParameterCount(function.params.len(), params.len())));
                 }
@@ -432,12 +447,13 @@ impl Optimizer {
         }
     }
 
-    fn optimize_extern_fn(&mut self, position: Positioned<()>, name: Positioned<String>, params: Vec<(Positioned<String>, Positioned<DataType>)>, return_type: Option<Positioned<DataType>>) -> Result<(Option<DataType>, Option<Positioned<Node>>), Positioned<OptimizerError>> {
+    fn optimize_extern_fn(&mut self, position: Positioned<()>, name: Positioned<String>, params: Vec<(Positioned<String>, Positioned<DataType>)>, list: bool, return_type: Option<Positioned<DataType>>) -> Result<(Option<DataType>, Option<Positioned<Node>>), Positioned<OptimizerError>> {
         // Save function symbol
         let function_data = FunctionData {
             name: name.clone(),
             return_type: return_type.clone().unwrap_or(name.clone().convert(DataType::Void)),
-            params: params.clone()
+            params: params.clone(),
+            list
         };
         self.scope.add_function(position.convert(function_data));
 
@@ -499,25 +515,32 @@ impl Optimizer {
                         }
                     }
                     Err(err) => {
-                        println!("[Parser Error]: {}", err.data);
+                        println!("[Parser Error]: {} at {}:{}", err.data, err.start.line, err.start.column);
                         err.show_on_text(str);
+                        exit(-1);
                     }
                 }
 
             }
             Err(err) => {
-                println!("[Lexer Error]: {}", err.data);
+                println!("[Lexer Error]: {} at {}:{}", err.data, err.start.line, err.start.column);
                 err.show_on_text(str.clone());
+                exit(-1);
             }
         }
 
         return Ok((None, None));
     }
 
+    fn optimize_include(&mut self, position: Positioned<()>, file: Positioned<String>) -> Result<(Option<DataType>, Option<Positioned<Node>>), Positioned<OptimizerError>> {
+        return Ok((None, Some(position.convert(Node::CompilerInstruction(CompilerInstruction::Include(file))))));
+    }
+
     fn optimize_compiler_instruction(&mut self, instruction: Positioned<CompilerInstruction>) -> Result<(Option<DataType>, Option<Positioned<Node>>), Positioned<OptimizerError>> {
         return match instruction.data.clone() {
-            CompilerInstruction::ExternFn(name, params, return_type) => self.optimize_extern_fn(instruction.convert(()), name, params, return_type),
+            CompilerInstruction::ExternFn(name, params, list, return_type) => self.optimize_extern_fn(instruction.convert(()), name, params, list, return_type),
             CompilerInstruction::Import(file) => self.optimize_import(instruction.convert(()), file),
+            CompilerInstruction::Include(file) => self.optimize_include(instruction.convert(()), file),
         }
     }
 
@@ -530,7 +553,7 @@ impl Optimizer {
             Node::VariableDefinition(var_type, name, data_type, value) => self.check_variable_definition(position, var_type, name, data_type, value),
             Node::Casting(left, right) => self.optimize_casting(*left, right),
             Node::VariableCall(id) => self.optimize_variable_call(node.convert(id)),
-            Node::VariableAssignment(id, value) => self.optimize_variable_assignment(id, *value),
+            Node::VariableAssignment(_, id, value) => self.optimize_variable_assignment(id, *value),
             Node::FunctionDefinition(name, params, return_type, body) => self.optimize_function_definition(position, name, params, return_type, body),
             Node::Return(node) => self.optimize_return(*node),
             Node::FunctionCall(name, params) => self.optimize_function_call(position, name, params),

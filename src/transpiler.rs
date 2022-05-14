@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use crate::{Node, Positioned};
 use crate::cnode::{CNode, COperator, CType, CValueNode};
-use crate::node::{DataType, Operator, ValueNode, VarType};
+use crate::node::{CompilerInstruction, DataType, Operator, ValueNode, VarType};
 
 pub enum TranspilerError {
 
@@ -176,11 +176,11 @@ impl Transpiler {
         return Ok(id.clone().convert(CNode::VariableCall(id.data.clone())));
     }
 
-    fn transpile_variable_assignment(&mut self, id: Positioned<String>, value: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+    fn transpile_variable_assignment(&mut self, deref: bool, id: Positioned<String>, value: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
         let c_value = self.transpile_node(value.clone())?;
         let start = id.start.clone();
         let end = value.end.clone();
-        return Ok(Positioned::new(CNode::VariableAssignment(id.clone(), Box::new(c_value)), start, end));
+        return Ok(Positioned::new(CNode::VariableAssignment(deref, id.clone(), Box::new(c_value)), start, end));
     }
 
     fn transpile_function_definition(&mut self, position: Positioned<()>, name: Positioned<String>, params: Vec<(Positioned<String>, Positioned<DataType>)>, return_type: Option<Positioned<DataType>>, body: Vec<Positioned<Node>>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
@@ -213,6 +213,18 @@ impl Transpiler {
         Ok(position.convert(CNode::FunctionCall(name, r_params)))
     }
 
+    fn transpile_include(&mut self, file: Positioned<String>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        return Ok(file.convert(CNode::Include(file.clone())));
+    }
+
+    fn transpile_compiler_instruction(&mut self, compiler_instruction: Positioned<CompilerInstruction>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
+        match compiler_instruction.data {
+            CompilerInstruction::ExternFn(_, _, _, _) => panic!("Should not happen"),
+            CompilerInstruction::Import(_) => panic!("Should not happen"),
+            CompilerInstruction::Include(file) => self.transpile_include(file),
+        }
+    }
+
     fn transpile_node(&mut self, node: Positioned<Node>) -> Result<Positioned<CNode>, Positioned<TranspilerError>> {
         let position = node.convert(());
         return match node.data.clone() {
@@ -222,11 +234,11 @@ impl Transpiler {
             Node::VariableDefinition(var_type, name, data_type, value) => self.transpile_variable_def(var_type, name, data_type, value),
             Node::Casting(left, right) => self.translate_casting(*left, right),
             Node::VariableCall(id) => self.transpile_variable_call(node.convert(id)),
-            Node::VariableAssignment(id, value) => self.transpile_variable_assignment(id, *value),
+            Node::VariableAssignment(deref, id, value) => self.transpile_variable_assignment(deref, id, *value),
             Node::FunctionDefinition(name, params, return_type, body) => self.transpile_function_definition(position, name, params, return_type, body),
             Node::Return(node) => self.transpile_return(position, *node),
             Node::FunctionCall(name, params) => self.transpile_function_call(position, name, params),
-            Node::CompilerInstruction(_) => todo!()
+            Node::CompilerInstruction(instruction) => self.transpile_compiler_instruction(position.convert(instruction)),
         }
     }
 

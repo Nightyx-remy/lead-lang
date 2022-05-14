@@ -16,6 +16,7 @@ pub enum Token {
     DoubleHat,
     Wave,
     At,
+    TripleDot,
     LeftAngle,
     DoubleLeftAngle,
     LeftAngleEqual,
@@ -60,6 +61,7 @@ pub enum Keyword {
     Bool,
     Str,
     Char,
+    Void,
     To,
     Ref,
     Deref,
@@ -67,6 +69,7 @@ pub enum Keyword {
     Return,
     Extern,
     Import,
+    Include,
 }
 
 impl Keyword {
@@ -96,6 +99,7 @@ impl Keyword {
             "bool" => Some(Keyword::Bool),
             "str" => Some(Keyword::Str),
             "char" => Some(Keyword::Char),
+            "void" => Some(Keyword::Void),
             "to" => Some(Keyword::To),
             "ref" => Some(Keyword::Ref),
             "deref" => Some(Keyword::Deref),
@@ -103,6 +107,7 @@ impl Keyword {
             "return" => Some(Keyword::Return),
             "extern" => Some(Keyword::Extern),
             "import" => Some(Keyword::Import),
+            "include" => Some(Keyword::Include),
             _ => None
         }
     }

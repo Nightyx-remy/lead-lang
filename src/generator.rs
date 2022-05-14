@@ -53,11 +53,11 @@ impl Generator {
     fn generate_bin_op(&mut self, left: Positioned<CNode>, operator: Positioned<COperator>, right: Positioned<CNode>) -> String {
         let mut out = String::new();
         out.push('(');
-        out.push_str(self.generate_node(left).as_str());
+        out.push_str(self.generate_node(left).1.as_str());
         out.push(' ');
         out.push_str(self.generate_operator(operator).as_str());
         out.push(' ');
-        out.push_str(self.generate_node(right).as_str());
+        out.push_str(self.generate_node(right).1.as_str());
         out.push(')');
         return out;
     }
@@ -66,7 +66,7 @@ impl Generator {
         let mut out = String::new();
         out.push('(');
         out.push_str(self.generate_operator(operator).as_str());
-        out.push_str(self.generate_node(value).as_str());
+        out.push_str(self.generate_node(value).1.as_str());
         out.push(')');
         return out;
     }
@@ -130,7 +130,7 @@ impl Generator {
         str.push_str(name.data.as_str());
         if let Some(value) = value {
             str.push_str(" = ");
-            str.push_str(self.generate_node(*value).as_str());
+            str.push_str(self.generate_node(*value).1.as_str());
         }
 
         return str;
@@ -141,7 +141,7 @@ impl Generator {
         str.push('(');
         str.push_str(self.generate_type(right).as_str());
         str.push_str(") ");
-        str.push_str(self.generate_node(left).as_str());
+        str.push_str(self.generate_node(left).1.as_str());
         return str;
     }
 
@@ -149,11 +149,14 @@ impl Generator {
         return id.data.clone();
     }
 
-    fn generate_variable_assignment(&mut self, id: Positioned<String>, value: Positioned<CNode>) -> String {
+    fn generate_variable_assignment(&mut self, deref: bool, id: Positioned<String>, value: Positioned<CNode>) -> String {
         let mut str = String::new();
+        if deref {
+            str.push_str("*");
+        }
         str.push_str(id.data.as_str());
         str.push_str(" = ");
-        str.push_str(self.generate_node(value).as_str());
+        str.push_str(self.generate_node(value).1.as_str());
         return str;
     }
 
@@ -175,7 +178,7 @@ impl Generator {
         }
         str.push_str(") {\n");
         for node in body {
-            for line in self.generate_node(node).lines() {
+            for line in self.generate_node(node).1.lines() {
                 str.push_str("\t");
                 str.push_str(line);
                 str.push_str(";\n");
@@ -194,7 +197,7 @@ impl Generator {
             if !first {
                 str.push_str(", ");
             }
-            str.push_str(self.generate_node(param.clone()).as_str());
+            str.push_str(self.generate_node(param.clone()).1.as_str());
             first = false;
         }
         str.push_str(")");
@@ -204,22 +207,27 @@ impl Generator {
     fn generate_return(&mut self, node: Positioned<CNode>) -> String {
         let mut str = String::new();
         str.push_str("return ");
-        str.push_str(self.generate_node(node).as_str());
+        str.push_str(self.generate_node(node).1.as_str());
         str
     }
 
-    fn generate_node(&mut self, node: Positioned<CNode>) -> String {
+    fn generate_include(&mut self, file: Positioned<String>) -> String {
+        return format!("#include <{}.h>", file.data);
+    }
+
+    fn generate_node(&mut self, node: Positioned<CNode>) -> (bool, String) {
         return match node.data.clone() {
-            CNode::BinaryOperation(left, op, right) => self.generate_bin_op(*left, op, *right),
-            CNode::UnaryOperation(operator, value) => self.generate_unary_op(operator, *value),
-            CNode::Value(value) => self.generate_value(value),
-            CNode::VariableDef(data_type, is_const, name, value) => self.generate_variable_def(data_type, is_const, name, value),
-            CNode::Casting(left, right) => self.generate_cast(*left, right),
-            CNode::VariableCall(id) => self.generate_variable_call(node.convert(id)),
-            CNode::VariableAssignment(id, value) => self.generate_variable_assignment(id, *value),
-            CNode::FunctionDefinition(return_type, name, params, body) => self.generate_function_definition(return_type, name, params, body),
-            CNode::FunctionCall(name, params) => self.generate_function_call(name, params),
-            CNode::Return(node) => self.generate_return(*node),
+            CNode::BinaryOperation(left, op, right) => (true, self.generate_bin_op(*left, op, *right)),
+            CNode::UnaryOperation(operator, value) => (true, self.generate_unary_op(operator, *value)),
+            CNode::Value(value) => (true, self.generate_value(value)),
+            CNode::VariableDef(data_type, is_const, name, value) => (true, self.generate_variable_def(data_type, is_const, name, value)),
+            CNode::Casting(left, right) => (true, self.generate_cast(*left, right)),
+            CNode::VariableCall(id) => (true, self.generate_variable_call(node.convert(id))),
+            CNode::VariableAssignment(deref, id, value) => (true, self.generate_variable_assignment(deref, id, *value)),
+            CNode::FunctionDefinition(return_type, name, params, body) => (false, self.generate_function_definition(return_type, name, params, body)),
+            CNode::FunctionCall(name, params) => (true, self.generate_function_call(name, params)),
+            CNode::Return(node) => (true, self.generate_return(*node)),
+            CNode::Include(file) => (false, self.generate_include(file)),
         }
     }
 
@@ -227,8 +235,12 @@ impl Generator {
         let mut str = String::new();
 
         while let Some(current) = self.current() {
-            str.push_str(self.generate_node(current).as_str());
-            str.push_str(";\n");
+            let res = self.generate_node(current);
+            str.push_str(res.1.as_str());
+            if res.0 {
+                str.push_str(";");
+            }
+            str.push_str("\n");
             self.advance();
         }
 

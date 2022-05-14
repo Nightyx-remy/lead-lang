@@ -7,11 +7,12 @@ pub enum CNode {
     Value(CValueNode),
     VariableDef(Positioned<CType>, bool, Positioned<String>, Option<Box<Positioned<CNode>>>),
     VariableCall(String),
-    VariableAssignment(Positioned<String>, Box<Positioned<CNode>>),
+    VariableAssignment(bool, Positioned<String>, Box<Positioned<CNode>>),
     Casting(Box<Positioned<CNode>>, Positioned<CType>),
     FunctionDefinition(Positioned<CType>, Positioned<String>, Vec<(Positioned<CType>, Positioned<String>)>, Vec<Positioned<CNode>>),
     FunctionCall(Positioned<String>, Vec<Positioned<CNode>>),
     Return(Box<Positioned<CNode>>),
+    Include(Positioned<String>),
 }
 
 #[derive(Clone, Debug)]

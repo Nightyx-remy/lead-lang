@@ -1,14 +1,15 @@
 @import(imports);
 
-fn add(lhs: i32, rhs: i32): i32 {
-    return lhs + rhs;
-}
-
 # Main function
 fn main(): i32 {
-    add(2, 3);
-
-    print_hello();
+    var ptr = malloc(4) to &i32;
+    ptr = 3;
+    printf("%p: %d\n", ptr, deref ptr);
+    free(ptr to &void);
+    ptr = malloc(4) to &i32;
+    ptr = 9;
+    printf("%p: %d\n", ptr, deref ptr);
+    free(ptr to &void);
 
     return 0;
 }

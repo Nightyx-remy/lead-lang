@@ -255,6 +255,26 @@ impl Lexer {
                     ',' => tokens.push(self.make_single(Token::Comma)),
                     '~' => tokens.push(self.make_single(Token::Wave)),
                     '@' => tokens.push(self.make_single(Token::At)),
+                    '.' => {
+                        let next = self.peek(1);
+                        match next {
+                            '.' => {
+                                let next2 = self.peek(2);
+                                match next {
+                                    '.' => {
+                                        let start = self.pos.clone();
+                                        self.advance();
+                                        self.advance();
+                                        let mut end = self.pos.clone();
+                                        end.advance(next2);
+                                        tokens.push(Positioned::new(Token::TripleDot, start, end));
+                                    }
+                                    _ => todo!("dot")
+                                }
+                            }
+                            _ => todo!("dot")
+                        }
+                    }
                     '<' => {
                         let next = self.peek(1);
                         match next {
