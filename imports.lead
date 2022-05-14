@@ -1,0 +1,5 @@
+@extern fn printf(msg: comptime str);
+
+fn print_hello() {
+    printf("Hello!\n");
+}

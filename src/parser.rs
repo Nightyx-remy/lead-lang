@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use crate::{Positioned, Token};
 use crate::either::Either;
-use crate::node::{DataType, Node, Operator, ValueNode, VarType};
+use crate::node::{CompilerInstruction, DataType, Node, Operator, ValueNode, VarType};
 use crate::position::Position;
 use crate::token::Keyword;
 
@@ -85,7 +85,7 @@ impl Parser {
     fn expect_token(&mut self, token: Token) -> Result<(), Positioned<ParserError>> {
         if let Some(current) = self.current() {
             if current.data != token {
-                return Err(Positioned::eof(ParserError::UnexpectedToken(current.data, vec![Either::A(token)])));
+                return Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::A(token)])));
             }
         } else {
             return Err(Positioned::eof(ParserError::UnexpectedEOF(vec![Either::A(token)])));
@@ -618,6 +618,98 @@ impl Parser {
         return self.parse_expr();
     }
 
+    fn parse_extern(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        self.advance();
+        self.expect_token(Token::Keyword(Keyword::Fn))?;
+        self.advance();
+
+        let mut current = self.expect_current(vec![Either::B("Identifier".to_string())])?;
+        return if let Token::Identifier(id) = current.data.clone() {
+            let identifier = current.convert(id);
+            self.advance();
+
+            // Parameters
+            self.expect_token(Token::LeftParenthesis);
+            self.advance();
+            let mut params = vec![];
+            let mut end;
+            loop {
+                current = self.expect_current(vec![Either::A(Token::RightParenthesis)])?;
+                if current.data.clone() == Token::RightParenthesis {
+                    end = current.end;
+                    break;
+                } else {
+                    if params.len() != 0 {
+                        self.expect_token(Token::Comma)?;
+                        self.advance();
+                        current = self.expect_current(vec![Either::B("identifier".to_string())])?;
+                    }
+                    if let Token::Identifier(param_id) = current.data.clone() {
+                        let param_identifier = current.convert(param_id);
+                        self.advance();
+                        self.expect_token(Token::Colon);
+                        self.advance();
+                        let data_type = self.parse_type()?;
+                        self.advance();
+                        params.push((param_identifier, data_type));
+                    } else {
+                        return Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])));
+                    }
+                }
+            }
+            self.advance();
+
+            // Return type
+            let mut return_type = None;
+            current = self.expect_current(vec![Either::A(Token::LeftCurlyBracket)])?;
+            if current.data == Token::Colon {
+                self.advance();
+                return_type = Some(self.parse_type()?);
+                end = return_type.as_ref().unwrap().end.clone();
+                self.advance();
+            }
+
+            self.expect_token(Token::Semicolon)?;
+            self.advance();
+            Ok(Positioned::new(Node::CompilerInstruction(CompilerInstruction::ExternFn(identifier, params, return_type)), start, end))
+        } else {
+            Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("Identifier".to_string())])))
+        }
+    }
+
+    fn parse_import(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        self.advance();
+        self.expect_token(Token::LeftParenthesis)?;
+        self.advance();
+        let current = self.expect_current(vec![Either::B("identifier".to_string())])?;
+        return if let Token::Identifier(id) = current.data.clone() {
+            let identifier = current.convert(id);
+            self.advance();
+            self.expect_token(Token::RightParenthesis)?;
+            let end = self.current().unwrap().end.clone();
+            self.advance();
+            self.expect_token(Token::Semicolon)?;
+            self.advance();
+            Ok(Positioned::new(Node::CompilerInstruction(CompilerInstruction::Import(identifier)), start, end))
+        } else {
+            Err(current.convert(ParserError::UnexpectedToken(current.data.clone(), vec![Either::B("identifier".to_string())])))
+        }
+    }
+
+    fn parse_compiler_instruction(&mut self, start: Position) -> Result<Positioned<Node>, Positioned<ParserError>> {
+        self.advance();
+        let current = self.expect_current(vec![Either::B("compiler instruction".to_string())])?;
+        return if let Token::Keyword(keyword) = current.data.clone() {
+            match keyword {
+                Keyword::Extern => self.parse_extern(start),
+                Keyword::Import => self.parse_import(start),
+                _ => Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("compiler instruction".to_string())])))
+            }
+        } else {
+            Err(current.clone().convert(ParserError::UnexpectedToken(current.data, vec![Either::B("compiler instruction".to_string())])))
+        }
+    }
+
     fn parse_current(&mut self) -> Result<Positioned<Node>, Positioned<ParserError>> {
         if let Some(current) = self.current() {
             match current.data.clone() {
@@ -646,6 +738,7 @@ impl Parser {
                     self.advance();
                     return Ok(expr);
                 },
+                Token::At => return self.parse_compiler_instruction(current.start),
                 Token::Keyword(keyword) => return self.parse_keyword(current.convert(keyword)),
                 token => Err(current.convert(ParserError::UnexpectedToken(token, vec![]))),
             }

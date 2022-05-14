@@ -195,9 +195,55 @@ impl Lexer {
                 tokens.push(self.make_string()?);
             } else {
                 match self.current {
+                    '#' => {
+                        while self.current != '\n' && self.current != '\0' {
+                            self.advance();
+                        }
+                    }
                     '+' => tokens.push(self.make_single(Token::Plus)),
                     '-' => tokens.push(self.make_single(Token::Minus)),
-                    '/' => tokens.push(self.make_single(Token::Slash)),
+                    '/' => {
+                        let next = self.peek(1);
+                        match next {
+                            '*' => {
+                                self.advance();
+                                self.advance();
+                                let mut star = false;
+                                let mut slash = false;
+                                let mut inner = 1;
+                                loop {
+                                    if self.current == '*' {
+                                        if slash {
+                                            inner -= 1;
+                                            slash = false;
+                                            if inner == 0 {
+                                                break;
+                                            }
+                                        } else {
+                                            star = true;
+                                        }
+                                    } else if self.current == '/' {
+                                        if star {
+                                            inner += 1;
+                                            star = false;
+                                        } else {
+                                            slash = true;
+                                        }
+                                    } else {
+                                        slash = false;
+                                        star = false;
+                                    }
+                                    self.advance();
+                                }
+                            }
+                            '/' => {
+                                while self.current != '\n' || self.current != '\0' {
+                                    self.advance();
+                                }
+                            }
+                            _ => tokens.push(self.make_single(Token::Slash))
+                        }
+                    },
                     '*' => tokens.push(self.make_single(Token::Star)),
                     '%' => tokens.push(self.make_single(Token::Percent)),
                     ';' => tokens.push(self.make_single(Token::Semicolon)),
@@ -208,6 +254,7 @@ impl Lexer {
                     ':' => tokens.push(self.make_single(Token::Colon)),
                     ',' => tokens.push(self.make_single(Token::Comma)),
                     '~' => tokens.push(self.make_single(Token::Wave)),
+                    '@' => tokens.push(self.make_single(Token::At)),
                     '<' => {
                         let next = self.peek(1);
                         match next {

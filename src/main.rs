@@ -52,7 +52,7 @@ fn main() {
 
                     // Optimizer
                     let mut optimizer = Optimizer::new(str, ast);
-                    let optimizer_result = optimizer.optimize();
+                    let optimizer_result = optimizer.optimize(true);
                     let str = optimizer.take();
 
                     match optimizer_result {

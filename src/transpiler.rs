@@ -226,6 +226,7 @@ impl Transpiler {
             Node::FunctionDefinition(name, params, return_type, body) => self.transpile_function_definition(position, name, params, return_type, body),
             Node::Return(node) => self.transpile_return(position, *node),
             Node::FunctionCall(name, params) => self.transpile_function_call(position, name, params),
+            Node::CompilerInstruction(_) => todo!()
         }
     }
 

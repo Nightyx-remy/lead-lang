@@ -14,6 +14,13 @@ pub enum Node {
     FunctionDefinition(Positioned<String>, Vec<(Positioned<String>, Positioned<DataType>)>, Option<Positioned<DataType>>, Vec<Positioned<Node>>),
     FunctionCall(Positioned<String>, Vec<Positioned<Node>>),
     Return(Box<Positioned<Node>>),
+    CompilerInstruction(CompilerInstruction)
+}
+
+#[derive(Clone, Debug)]
+pub enum CompilerInstruction {
+    ExternFn(Positioned<String>, Vec<(Positioned<String>, Positioned<DataType>)>, Option<Positioned<DataType>>),
+    Import(Positioned<String>),
 }
 
 #[derive(Clone, Debug)]

@@ -24,10 +24,23 @@ impl<A> Positioned<A> {
         }
     }
 
+    pub fn no_pos(data: A) -> Self {
+        return Self {
+            start: Position::new(usize::MAX, 0, 0),
+            end: Position::new(0, 0, 0),
+            data
+        };
+    }
+
     pub fn show_on_text(&self, src: String) {
         if self.start.index == usize::MAX {
-            let line = src.lines().last().unwrap_or("a");
-            println!("{}\n{}^", line, " ".repeat(line.len()));
+            if self.end.index == usize::MAX {
+                // eof
+                let line = src.lines().last().unwrap_or("a");
+                println!("{}\n{}^", line, " ".repeat(line.len()));
+            } else {
+                // no pos
+            }
         } else {
             let lines: Vec<&str> = src.lines().collect();
 

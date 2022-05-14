@@ -15,6 +15,7 @@ pub enum Token {
     Hat,
     DoubleHat,
     Wave,
+    At,
     LeftAngle,
     DoubleLeftAngle,
     LeftAngleEqual,
@@ -63,7 +64,9 @@ pub enum Keyword {
     Ref,
     Deref,
     Fn,
-    Return
+    Return,
+    Extern,
+    Import,
 }
 
 impl Keyword {
@@ -98,6 +101,8 @@ impl Keyword {
             "deref" => Some(Keyword::Deref),
             "fn" => Some(Keyword::Fn),
             "return" => Some(Keyword::Return),
+            "extern" => Some(Keyword::Extern),
+            "import" => Some(Keyword::Import),
             _ => None
         }
     }

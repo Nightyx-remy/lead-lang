@@ -1,22 +1,14 @@
-let a = 33;
-let b = (a + 5) to u16;
-~8;
-
-var value: u32 = 12;
-value = 9;
-
-var ref_value = ref value;
-var const_ref_value: const ref u32 = const ref value;
-var double_ref = ref ref_value;
-
-var comptime_str = "Hello";
+@import(imports);
 
 fn add(lhs: i32, rhs: i32): i32 {
     return lhs + rhs;
 }
 
-add(5, 4);
-
+# Main function
 fn main(): i32 {
-    var c = 918;
+    add(2, 3);
+
+    print_hello();
+
+    return 0;
 }
